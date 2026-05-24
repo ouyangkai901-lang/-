@@ -1,6 +1,10 @@
-server.port=8082
-spring.application.name=es-demo
+server:
+  port: 8082
 
-# ES 连接
-elasticsearch.host=localhost
-elasticsearch.port=9200
+spring:
+  application:
+    name: es-demo
+
+elasticsearch:
+  host: localhost
+  port: 9200

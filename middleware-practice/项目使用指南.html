@@ -83,11 +83,31 @@ docker-compose ps
 <span class="co"># 编译整个项目</span>
 mvn clean compile
 
-<span class="co"># 分别启动各模块（每个终端一个）</span>
-mvn -pl kafka-demo  spring-boot:run    <span class="co"># → http://localhost:8081</span>
-mvn -pl es-demo     spring-boot:run    <span class="co"># → http://localhost:8082</span>
-mvn -pl hbase-demo  spring-boot:run    <span class="co"># → http://localhost:8083</span>
-mvn -pl qdrant-demo spring-boot:run    <span class="co"># → http://localhost:8084</span></pre>
+<span class="co"># 统一推荐：从根目录启动模块（会自动带上依赖模块 common）</span>
+mvn -pl kafka-demo  -am spring-boot:run -DskipTests    <span class="co"># → http://localhost:8081</span>
+mvn -pl es-demo     -am spring-boot:run -DskipTests    <span class="co"># → http://localhost:8082</span>
+mvn -pl hbase-demo  -am spring-boot:run -DskipTests    <span class="co"># → http://localhost:8083</span>
+mvn -pl qdrant-demo -am spring-boot:run -DskipTests    <span class="co"># → http://localhost:8084</span>
+
+<span class="co"># 不建议进入子模块目录后直接 mvn spring-boot:run</span>
+<span class="co"># 原因：kafka-demo/es-demo/hbase-demo/qdrant-demo 都依赖 common，</span>
+<span class="co"># 单独跑子模块时，Maven 可能把 common 当外部依赖解析，导致启动失败。</span></pre>
+
+<h3>IntelliJ IDEA 启动方式</h3>
+<pre><span class="co"># 正确姿势</span>
+<span class="co"># 1. 用项目根目录的 pom.xml 导入整个多模块工程</span>
+<span class="co">#    middleware-practice/pom.xml</span>
+<span class="co"># 2. 确认 IDEA 里能看到 common、kafka-demo、es-demo、hbase-demo、qdrant-demo 五个模块</span>
+<span class="co"># 3. 直接点 Application 主类左边绿色三角启动，不要点 Maven 的 spring-boot:run</span>
+
+<span class="co"># 对应主类</span>
+com.example.kafka.KafkaDemoApplication
+com.example.es.EsDemoApplication
+com.example.hbase.HBaseDemoApplication
+com.example.qdrant.QdrantDemoApplication
+
+<span class="co"># 如果 IDEA 点击绿色三角仍然失败，通常是因为工程不是按“整个多模块项目”导入，</span>
+<span class="co"># 而是只导入了某个子模块，导致 common 没进入运行时 classpath。</span></pre>
 
 <h2>三、API 接口速查</h2>
 
@@ -121,11 +141,15 @@ curl -X POST http://localhost:<span class="nu">8082</span>/api/products \
   -H <span class="st">'Content-Type: application/json'</span> \
   -d <span class="st">'{"title":"苹果 MacBook Pro 14英寸 M3芯片","category":"笔记本","price":14999,"stock":80}'</span>
 
-<span class="co"># 分词搜索</span>
-curl <span class="st">"http://localhost:8082/api/products/search?keyword=苹果手机&minPrice=5000&maxPrice=10000"</span>
+<span class="co"># 分词搜索（中文参数建议用 --data-urlencode）</span>
+curl -G http://localhost:<span class="nu">8082</span>/api/products/search \
+  --data-urlencode <span class="st">'keyword=苹果手机'</span> \
+  --data-urlencode <span class="st">'minPrice=5000'</span> \
+  --data-urlencode <span class="st">'maxPrice=10000'</span>
 
 <span class="co"># 按分类过滤</span>
-curl <span class="st">"http://localhost:8082/api/products/search?category=笔记本"</span></pre>
+curl -G http://localhost:<span class="nu">8082</span>/api/products/search \
+  --data-urlencode <span class="st">'category=笔记本'</span></pre>
 </div>
 
 <!-- HBase -->
@@ -166,11 +190,24 @@ curl -X POST http://localhost:<span class="nu">8084</span>/api/faq \
   -H <span class="st">'Content-Type: application/json'</span> \
   -d <span class="st">'{"question":"如何申请退款？","answer":"进入订单详情→点击申请退款→选择原因→提交","category":"售后"}'</span>
 
-<span class="co"># 语义搜索</span>
-curl <span class="st">"http://localhost:8084/api/faq/search?q=我的快递还没到怎么办&limit=3"</span>
+<span class="co"># 语义搜索（中文参数建议用 --data-urlencode）</span>
+curl -G http://localhost:<span class="nu">8084</span>/api/faq/search \
+  --data-urlencode <span class="st">'q=我的快递还没到怎么办'</span> \
+  --data-urlencode <span class="st">'limit=3'</span>
 
 <span class="co"># 语义搜索 + 分类过滤</span>
-curl <span class="st">"http://localhost:8084/api/faq/search-filtered?q=怎么退钱&category=售后"</span></pre>
+curl -G http://localhost:<span class="nu">8084</span>/api/faq/search-filtered \
+  --data-urlencode <span class="st">'q=怎么退钱'</span> \
+  --data-urlencode <span class="st">'category=售后'</span> \
+  --data-urlencode <span class="st">'limit=3'</span>
+
+<span class="co"># 如果命令行里直接输入中文 JSON 容易被换行打断，推荐先写到文件再提交：</span>
+cat &gt; /tmp/faq.json &lt;&lt;'EOF'
+{"question":"物流超时如何查询？","answer":"打开APP→我的→帮助中心→物流查询","category":"物流"}
+EOF
+curl -X POST http://localhost:<span class="nu">8084</span>/api/faq \
+  -H <span class="st">'Content-Type: application/json'</span> \
+  --data-binary @/tmp/faq.json</pre>
 </div>
 
 <div class="callout warn">

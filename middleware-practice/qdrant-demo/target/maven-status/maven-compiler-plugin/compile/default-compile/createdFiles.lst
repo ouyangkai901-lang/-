@@ -1,6 +1,0 @@
-com/example/qdrant/QdrantDemoApplication.class
-com/example/qdrant/config/QdrantConfig.class
-com/example/qdrant/controller/FaqController$FaqRequest.class
-com/example/qdrant/controller/FaqController.class
-com/example/qdrant/service/QdrantFaqService.class
-com/example/qdrant/service/QdrantFaqService$FaqResult.class

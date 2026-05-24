@@ -1,7 +1,0 @@
-server.port=8084
-spring.application.name=qdrant-demo
-
-# Qdrant
-qdrant.host=localhost
-qdrant.grpc.port=6334
-qdrant.collection=faq

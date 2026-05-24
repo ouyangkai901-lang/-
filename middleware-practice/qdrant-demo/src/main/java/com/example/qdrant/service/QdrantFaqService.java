@@ -1,9 +1,12 @@
 package com.example.qdrant.service;
 
+import io.qdrant.client.PointIdFactory;
 import io.qdrant.client.QdrantClient;
+import io.qdrant.client.ValueFactory;
 import io.qdrant.client.WithPayloadSelectorFactory;
 import io.qdrant.client.grpc.JsonWithInt;
 import io.qdrant.client.grpc.Points;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import jakarta.annotation.Resource;
@@ -13,7 +16,8 @@ import java.util.*;
 @Service
 public class QdrantFaqService {
 
-    private static final String COLLECTION = "faq";
+    @Value("${qdrant.collection:faq}")
+    private String collection;
 
     @Resource
     private QdrantClient qdrantClient;
@@ -28,19 +32,19 @@ public class QdrantFaqService {
         List<Float> vector = mockEmbedding(question);
 
         Map<String, JsonWithInt.Value> payload = new LinkedHashMap<>();
-        payload.put("question", JsonWithInt.Value.newBuilder().setStringValue(question).build());
-        payload.put("answer",   JsonWithInt.Value.newBuilder().setStringValue(answer).build());
-        payload.put("category", JsonWithInt.Value.newBuilder().setStringValue(category).build());
+        payload.put("question", ValueFactory.value(question));
+        payload.put("answer", ValueFactory.value(answer));
+        payload.put("category", ValueFactory.value(category));
 
         Points.PointStruct point = Points.PointStruct.newBuilder()
-                .setId(Points.PointId.newBuilder().setNum(id).build())
+                .setId(PointIdFactory.id(id))
                 .setVectors(Points.Vectors.newBuilder()
                         .setVector(Points.Vector.newBuilder().addAllData(vector).build())
                         .build())
                 .putAllPayload(payload)
                 .build();
 
-        qdrantClient.upsertAsync(COLLECTION, Collections.singletonList(point)).get();
+        qdrantClient.upsertAsync(collection, Collections.singletonList(point)).get();
         return id;
     }
 
@@ -50,7 +54,7 @@ public class QdrantFaqService {
 
         List<Points.ScoredPoint> points = qdrantClient.searchAsync(
                 Points.SearchPoints.newBuilder()
-                        .setCollectionName(COLLECTION)
+                        .setCollectionName(collection)
                         .addAllVector(queryVector)
                         .setLimit(limit)
                         .setWithPayload(WithPayloadSelectorFactory.enable(true))
@@ -66,7 +70,7 @@ public class QdrantFaqService {
 
         List<Points.ScoredPoint> points = qdrantClient.searchAsync(
                 Points.SearchPoints.newBuilder()
-                        .setCollectionName(COLLECTION)
+                        .setCollectionName(collection)
                         .addAllVector(queryVector)
                         .setLimit(limit)
                         .setFilter(Points.Filter.newBuilder()

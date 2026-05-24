@@ -1,6 +1,0 @@
-com/example/es/config/EsConfig.class
-com/example/es/controller/ProductSearchController.class
-com/example/es/EsDemoApplication.class
-com/example/es/model/Product$ProductBuilder.class
-com/example/es/service/ProductSearchService.class
-com/example/es/model/Product.class

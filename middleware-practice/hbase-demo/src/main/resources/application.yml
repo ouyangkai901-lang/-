@@ -1,6 +1,12 @@
-server.port=8083
-spring.application.name=hbase-demo
+server:
+  port: 8083
 
-# HBase
-hbase.zookeeper.quorum=localhost
-hbase.zookeeper.property.clientPort=2182
+spring:
+  application:
+    name: hbase-demo
+
+hbase:
+  zookeeper:
+    quorum: localhost
+    property:
+      clientPort: 2182

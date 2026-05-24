@@ -52,7 +52,8 @@ public class ProductSearchService {
                         b.must(m -> m.match(t -> t.field("title").query(keyword)));
                     }
                     if (category != null && !category.isEmpty()) {
-                        b.filter(f -> f.term(t -> t.field("category").value(category)));
+                        // Use the keyword subfield for exact category filtering.
+                        b.filter(f -> f.term(t -> t.field("category.keyword").value(category)));
                     }
                     if (minPrice != null || maxPrice != null) {
                         b.filter(f -> f.range(r -> r.number(n -> {

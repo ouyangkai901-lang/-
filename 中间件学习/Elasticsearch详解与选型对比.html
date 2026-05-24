@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Elasticsearch 详解 · 倒排索引与选型对比</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap');
+  *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+  :root{--bg:#faf8f5;--surface:#ffffff;--surface2:#f5f0ea;--border:#e3dbd0;--text:#3d3929;--text-dim:#8c8980;--text-bright:#1e1b18;--primary:#2563eb;--green:#2d8a4e;--orange:#b45309;--purple:#7c3aed;--red:#dc2626;--cyan:#0d9488}
+  body{font-family:'Noto Sans SC',sans-serif;background:var(--bg);color:var(--text);line-height:1.85}
+  .container{max-width:1000px;margin:0 auto;padding:40px 24px 80px}
+  .toc{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px 28px;margin:0 0 40px}
+  .toc h3{font-size:16px;color:var(--text-bright);margin-bottom:14px}
+  .toc ol{columns:2;column-gap:24px;padding-left:20px;font-size:13px;line-height:2.2}
+  .toc ol li a{color:var(--primary);text-decoration:none}
+  .toc ol li a:hover{text-decoration:underline}
+  .doc-header{text-align:center;padding:60px 0 50px;position:relative}
+  .doc-header::after{content:'';position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:100px;height:3px;background:linear-gradient(90deg,transparent,var(--primary),transparent);border-radius:2px}
+  .doc-header h1{font-size:34px;font-weight:900;color:var(--text-bright)}
+  .doc-header .ref{font-size:14px;color:var(--text-dim);margin-top:6px}
+  h2{font-size:22px;font-weight:700;color:var(--text-bright);margin:48px 0 18px;padding-bottom:10px;border-bottom:2px solid var(--border)}
+  h3{font-size:18px;font-weight:600;color:var(--text-bright);margin:28px 0 12px}
+  p{margin-bottom:12px;font-size:14px}
+  p strong{color:var(--text-bright)}
+  code{font-family:'JetBrains Mono',monospace;background:var(--surface2);padding:2px 6px;border-radius:4px;font-size:13px;color:var(--red)}
+  pre{background:#1e1b18;color:#e8e4dc;padding:16px 20px;border-radius:10px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.7;margin:12px 0}
+  pre .co{color:#546e7a}pre .kw{color:#c792ea}pre .tp{color:#ffcb6b}pre .fn{color:#82aaff}pre .st{color:#c3e88d}pre .nu{color:#f78c6c}pre .red{color:#f07178}pre .grn{color:#c3e88d}
+  .table-wrap{overflow-x:auto;margin:12px 0 20px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  thead th{background:var(--surface2);padding:10px 14px;border:1px solid var(--border);text-align:left;font-weight:600;color:var(--text-bright)}
+  tbody td{padding:9px 14px;border:1px solid var(--border);vertical-align:top}
+  tbody tr:nth-child(even){background:rgba(0,0,0,0.012)}
+  .callout{background:rgba(37,99,235,0.06);border-left:4px solid var(--primary);padding:12px 16px;border-radius:0 8px 8px 0;margin:12px 0;font-size:13px}
+  .callout.warn{background:rgba(220,38,38,0.06);border-left-color:var(--red)}
+  .callout.tip{background:rgba(45,138,78,0.06);border-left-color:var(--green)}
+  .diagram{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin:12px 0;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.8;white-space:pre;text-align:center}
+  .diagram.label{text-align:left}
+  .compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0}
+  .compare-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px}
+  .compare-card h4{margin:0 0 8px;font-size:15px}
+  .compare-card.good{border-left:3px solid var(--green)}
+  .compare-card.bad{border-left:3px solid var(--red)}
+  .compare-card.warn{border-left:3px solid var(--orange)}
+  .qa-grid{display:grid;grid-template-columns:1fr;gap:8px;margin:12px 0}
+  .qa-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px}
+  .qa-card .q{font-weight:700;color:var(--text-bright);font-size:14px;margin-bottom:3px}
+  .qa-card .a{font-size:13px;color:var(--text-dim)}
+  .doc-footer{margin-top:50px;padding:24px 0;border-top:1px solid var(--border);color:var(--text-dim);font-size:13px}
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="doc-header">
+  <h1>Elasticsearch 详解 · 倒排索引与选型对比</h1>
+  <p class="ref">ES vs Solr vs MongoDB vs MySQL —— 搜索引擎选型决策指南</p>
+</div>
+
+<div class="toc">
+  <h3>📑 目录</h3>
+  <ol>
+    <li><a href="#s1">为什么需要搜索引擎？</a></li>
+    <li><a href="#s2">倒排索引 —— ES 的核心</a></li>
+    <li><a href="#s3">ES 核心概念与架构</a></li>
+    <li><a href="#s4">ES vs Solr —— 搜索引擎内战</a></li>
+    <li><a href="#s5">ES vs MongoDB —— 搜索 vs 存储</a></li>
+    <li><a href="#s6">ES vs MySQL 全文索引</a></li>
+    <li><a href="#s7">选型决策树</a></li>
+    <li><a href="#s8">ES 基础 CRUD 操作</a></li>
+    <li><a href="#s9">常见应用场景</a></li>
+    <li><a href="#s10">面试速记</a></li>
+  </ol>
+</div>
+
+<h2 id="s1">一、为什么需要搜索引擎？</h2>
+
+<p>假设你有一个电商系统，用户搜索"<strong>苹果手机 256G 红色</strong>"，MySQL 怎么做？</p>
+<pre><span class="co">-- MySQL LIKE 做法：</span>
+SELECT * FROM products WHERE name LIKE <span class="st">'%苹果%'</span> OR name LIKE <span class="st">'%手机%'</span> OR name LIKE <span class="st">'%256G%'</span>;
+<span class="co">-- 问题：</span>
+<span class="co">-- ① 无法分词："苹果手机"被当作一个整体，而不是"苹果"+"手机"</span>
+<span class="co">-- ② 无法相关性排序：哪个商品更匹配？不知道</span>
+<span class="co">-- ③ 全表扫描：百万级数据直接卡死</span>
+<span class="co">-- ④ 无法纠错：用户搜"平果手机"查不到任何东西</span></pre>
+
+<div class="callout">
+  <strong>搜索引擎解决的核心问题：</strong>在海量数据中<strong>快速、精准、智能</strong>地找到用户想要的信息。核心能力：分词 → 倒排索引 → 相关性打分 → 高亮 → 聚合。
+</div>
+
+<h2 id="s2">二、倒排索引 —— ES 的核心</h2>
+
+<p>ES 的快，根子在<strong>倒排索引（Inverted Index）</strong>。理解了它，就理解了搜索引擎的本质。</p>
+
+<h3>2.1 正排索引 vs 倒排索引</h3>
+<div class="compare-grid">
+  <div class="compare-card bad">
+    <h4>正排索引（MySQL B+Tree 索引）</h4>
+    <p style="font-size:13px;">文档ID → 文档内容<br><br>
+    <code>1 → "苹果手机很好用"<br>2 → "华为手机也不错"<br>3 → "苹果笔记本轻薄"</code><br><br>
+    查"苹果" → 需要遍历所有文档，逐个检查内容</p>
+  </div>
+  <div class="compare-card good">
+    <h4>倒排索引（ES 的索引方式）</h4>
+    <p style="font-size:13px;">词条 → 包含该词条的文档列表<br><br>
+    <code>"苹果" → [1, 3]<br>"手机" → [1, 2]<br>"笔记本" → [3]</code><br><br>
+    查"苹果" → 直接定位到文档 1 和 3，O(1) 查找</p>
+  </div>
+</div>
+
+<h3>2.2 倒排索引的构建过程</h3>
+<div class="diagram label">
+<strong>原始文档 → 倒排索引：</strong>
+
+① 文档 → ② 分词 → ③ 词条标准化 → ④ 建立倒排表
+
+文档1: "The quick brown fox jumped over the lazy dog"
+文档2: "The quick brown fox is quick"
+
+分词 + 标准化后：
+┌──────────┬──────────────┐
+│  词条     │  文档列表     │
+├──────────┼──────────────┤
+│  quick   │  [1, 2]      │  ← 文档2中 quick 出现了2次, 还需要存位置
+│  brown   │  [1, 2]      │
+│  fox     │  [1, 2]      │
+│  jump    │  [1]         │
+│  dog     │  [1]         │
+└──────────┴──────────────┘
+
+<strong>实际存储结构更复杂：</strong>
+Term → (DocID, TF, [position1, position2, ...])
+"quick" → (1, 1, [2]), (2, 2, [3, 7])
+                           ↑       ↑
+                        词频TF   位置索引(支持短语查询)
+</div>
+
+<h3>2.3 为什么倒排索引这么快？</h3>
+<div class="steps" style="counter-reset:step">
+  <div class="step" style="padding:10px 14px;font-size:13px;"><strong>底层是 Term Dictionary（排序的词条列表）</strong>，查找时做<strong>二分查找</strong>或基于 FST（有限状态转换器）的前缀匹配，不在磁盘上随机读写</div>
+  <div class="step" style="padding:10px 14px;font-size:13px;"><strong>Term Dictionary 有 Term Index 加速</strong>：Term Index 是一棵 Trie 树（前缀树），内存中就能定位到词条在 Term Dictionary 的哪个 Block</div>
+  <div class="step" style="padding:10px 14px;font-size:13px;"><strong>Posting List（文档列表）用 SkipList + Frame of Reference 压缩</strong>，跳跃读取 + 高效压缩，IO 极低</div>
+  <div class="step" style="padding:10px 14px;font-size:13px;">多条件查询时，Posting List <strong>求交集</strong>（如"苹果 AND 手机"），用跳表或 BitMap 做集合运算，效率极高</div>
+</div>
+
+<div class="callout">
+  <strong>一句话总结：</strong>MySQL 是"拿着文档找词"，ES 是"拿着词找文档"。当数据量大且查询条件是"包含某个词"时，倒排索引效率碾压 B+Tree。
+</div>
+
+<h2 id="s3">三、ES 核心概念与架构</h2>
+
+<div class="diagram">
+<strong>ES 逻辑结构：</strong>
+
+  Cluster (集群)
+    ├── Node-1 (节点, 一个 ES 进程)
+    │     ├── Shard-0 (P)  ← 主分片
+    │     ├── Shard-1 (R)  ← 副本分片 (来自 Node-2 的 Shard-1 副本)
+    │     └── Shard-2 (R)
+    │
+    ├── Node-2
+    │     ├── Shard-0 (R)
+    │     ├── Shard-1 (P)
+    │     └── Shard-2 (R)
+    │
+    └── Node-3
+          ├── Shard-0 (R)
+          ├── Shard-1 (R)
+          └── Shard-2 (P)
+
+  Index  (索引, 类似 MySQL 的 Database)
+    └── Type  (类型, 7.x 开始废弃, 一个 Index 只有 _doc)
+          └── Document (文档, 类似 MySQL 的一行)
+                └── Field (字段, 类似 MySQL 的一列)
+      </div>
+
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>ES 概念</th><th>MySQL 类比</th><th>说明</th></tr></thead>
+    <tbody>
+      <tr><td>Index</td><td>Database</td><td>索引，一个业务一套索引</td></tr>
+      <tr><td>Type (7.x 废弃)</td><td>Table</td><td>ES 7.x 后一个 Index 只能有一个 _doc Type</td></tr>
+      <tr><td>Document</td><td>Row</td><td>JSON 格式的一条数据</td></tr>
+      <tr><td>Field</td><td>Column</td><td>文档中的字段</td></tr>
+      <tr><td>Mapping</td><td>Schema</td><td>定义字段的类型、分词器等</td></tr>
+      <tr><td>Shard</td><td>分表</td><td>数据分片，分布式存储</td></tr>
+      <tr><td>Replica</td><td>从库</td><td>副本，高可用 + 提升查询吞吐</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="callout">
+  <strong>ES 分布式写入流程（关键！）：</strong><br>
+  请求 → 任意节点（协调节点）→ 根据 doc_id 路由到主分片 → 主分片写入 + 同步到副本分片 → 副本分片全部成功后返回确认<br>
+  <code>shard = hash(routing) % number_of_primary_shards</code>（routing 默认是 doc_id）
+</div>
+
+<h2 id="s4">四、ES vs Solr —— 搜索引擎内战</h2>
+
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>维度</th><th>Elasticsearch</th><th>Solr</th></tr></thead>
+    <tbody>
+      <tr><td>底层引擎</td><td>Lucene</td><td>Lucene（和 ES 一样）</td></tr>
+      <tr><td>分布式</td><td style="color:var(--green);"><strong>天生分布式</strong>，集群配置简单</td><td>依赖 ZooKeeper，搭建复杂</td></tr>
+      <tr><td>实时搜索</td><td style="color:var(--green);"><strong>近实时（1秒）</strong></td><td>稍慢</td></tr>
+      <tr><td>JSON 支持</td><td style="color:var(--green);"><strong>原生 JSON，RESTful API</strong></td><td>XML/JSON 都支持</td></tr>
+      <tr><td>生态与社区</td><td style="color:var(--green);"><strong>ELK Stack 全生态</strong>，社区活跃</td><td>相对小众</td></tr>
+      <tr><td>大数据量</td><td style="color:var(--green);"><strong>PB 级，水平扩展强</strong></td><td>TB 级够用，更大不如 ES</td></tr>
+      <tr><td>静态数据</td><td>实时搜索</td><td style="color:var(--orange);">富文本文档搜索<strong>更精确</strong></td></tr>
+      <tr><td>使用门槛</td><td>低（RESTful API）</td><td>中（配置文件较多）</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="callout">
+  <strong>选 Solr 的唯一理由：</strong>你的数据是大量的静态文档（PDF、Word 等），且需要精确的全文搜索体验。大多数互联网场景无脑选 ES。
+</div>
+
+<h2 id="s5">五、ES vs MongoDB —— 搜索 vs 存储</h2>
+<p>这是最常见的混淆——"MongoDB 也可以建索引，也能搜文本，为什么还要 ES？"</p>
+
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>维度</th><th>Elasticsearch</th><th>MongoDB</th></tr></thead>
+    <tbody>
+      <tr><td>定位</td><td><strong>搜索引擎</strong>（专为搜索而生）</td><td><strong>文档数据库</strong>（NoSQL 存储）</td></tr>
+      <tr><td>核心索引</td><td>倒排索引</td><td>B-Tree 索引</td></tr>
+      <tr><td>分词</td><td style="color:var(--green);"><strong>内置中文分词器</strong>（ik、jieba）</td><td>不支持中文分词</td></tr>
+      <tr><td>相关性打分</td><td style="color:var(--green);"><strong>TF-IDF / BM25，排序准确</strong></td><td>不支持</td></tr>
+      <tr><td>聚合分析</td><td style="color:var(--green);"><strong>强大的 Aggregation</strong>（统计、分组）</td><td>Aggregation Pipeline（功能较弱）</td></tr>
+      <tr><td>高亮</td><td style="color:var(--green);"><strong>原生支持搜索词高亮</strong></td><td>不支持</td></tr>
+      <tr><td>模糊查询</td><td style="color:var(--green);"><strong>拼写纠错、拼音搜索</strong></td><td>仅支持正则（慢）</td></tr>
+      <tr><td>事务</td><td>不支持</td><td style="color:var(--green);"><strong>4.0+ 支持多文档事务</strong></td></tr>
+      <tr><td>写入性能</td><td>中等（近实时刷新）</td><td style="color:var(--green);"><strong>高</strong>（直接写内存）</td></tr>
+      <tr><td>数据可靠性</td><td>写入有 translog，但<strong>不是 ACID</strong></td><td style="color:var(--green);"><strong>可配置 Write Concern</strong></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="callout tip">
+  <strong>最佳实践：不要把 ES 当数据库用！</strong><br>
+  MongoDB/MySQL 做主存储，数据同步到 ES 做搜索。常见同步方案：<br>
+  · <strong>Canal</strong>（阿里开源）：监听 MySQL binlog → 同步到 ES<br>
+  · <strong>Logstash</strong>：定时从数据库拉数据 → 写入 ES<br>
+  · <strong>应用层双写</strong>：写入 MySQL 同时写入 ES（注意事务一致性）
+</div>
+
+<h2 id="s6">六、ES vs MySQL 全文索引</h2>
+<p>MySQL 5.6+ 也有 FULLTEXT 索引（InnoDB），为什么不用？</p>
+
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>维度</th><th>MySQL FULLTEXT</th><th>Elasticsearch</th></tr></thead>
+    <tbody>
+      <tr><td>分词</td><td>内置（空格分词），<span style="color:var(--red);">不支持中文</span></td><td style="color:var(--green);"><strong>ik 分词器 / jieba 分词</strong></td></tr>
+      <tr><td>相关性排序</td><td>简单，不可定制</td><td style="color:var(--green);"><strong>BM25 + 自定义打分</strong></td></tr>
+      <tr><td>百万级性能</td><td style="color:var(--red);">慢（同时承担 OLTP 压力）</td><td style="color:var(--green);"><strong>专门优化，毫秒级</strong></td></tr>
+      <tr><td>高亮/聚合</td><td>不支持</td><td style="color:var(--green);"><strong>原生支持</strong></td></tr>
+      <tr><td>与 OLTP 互相影响</td><td style="color:var(--red);">搜索 + 写入抢资源</td><td style="color:var(--green);"><strong>独立服务，不影响主库</strong></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2 id="s7">七、选型决策树</h2>
+<div class="diagram label">
+<strong>你的场景 → 选什么？</strong>
+
+  需要搜索？
+  ├── 数据量不大(&lt;10万)，简单 LIKE 够用 → <strong>MySQL LIKE 就行，别过度设计</strong>
+  ├── 数据量几十万，需要模糊搜索 → <strong>MySQL FULLTEXT + ngram 分词器</strong>
+  ├── 需要中文分词 / 相关性排序 / 高亮 → <strong>Elasticsearch</strong>
+  │   ├── 数据是静态文档(PDF/Word) → 也可考虑 <strong>Solr</strong>
+  │   └── 一般业务搜索 → 无脑 <strong>ES</strong>
+  ├── 只是查日志 → <strong>ES + Kibana (ELK)</strong>
+  └── 只是简单的 NoSQL 存储 + 偶尔搜 → <strong>MongoDB</strong>，不要引入 ES 增加复杂度
+</div>
+
+<h2 id="s8">八、ES 基础 CRUD 操作</h2>
+<pre><span class="co"># ===== 索引管理 =====</span>
+<span class="co"># 创建索引（设置分词器）</span>
+PUT /products
+{
+  <span class="st">"settings"</span>: {
+    <span class="st">"number_of_shards"</span>: <span class="nu">3</span>,
+    <span class="st">"number_of_replicas"</span>: <span class="nu">1</span>,
+    <span class="st">"analysis"</span>: {
+      <span class="st">"analyzer"</span>: { <span class="st">"ik_smart"</span>: { <span class="st">"type"</span>: <span class="st">"custom"</span>, <span class="st">"tokenizer"</span>: <span class="st">"ik_smart"</span> } }
+    }
+  },
+  <span class="st">"mappings"</span>: {
+    <span class="st">"properties"</span>: {
+      <span class="st">"title"</span>:    { <span class="st">"type"</span>: <span class="st">"text"</span>,    <span class="st">"analyzer"</span>: <span class="st">"ik_max_word"</span> },
+      <span class="st">"price"</span>:    { <span class="st">"type"</span>: <span class="st">"double"</span> },
+      <span class="st">"category"</span>: { <span class="st">"type"</span>: <span class="st">"keyword"</span> },
+      <span class="st">"created"</span>:  { <span class="st">"type"</span>: <span class="st">"date"</span> }
+    }
+  }
+}
+
+<span class="co"># ===== 文档 CRUD =====</span>
+<span class="co"># 新增 / 全量替换（指定 ID）</span>
+PUT  /products/_doc/<span class="nu">1</span>  { <span class="st">"title"</span>: <span class="st">"苹果 iPhone 15 Pro 256G"</span>, <span class="st">"price"</span>: <span class="nu">8999</span>, <span class="st">"category"</span>: <span class="st">"手机"</span> }
+
+<span class="co"># 新增（自动生成 ID）</span>
+POST /products/_doc     { <span class="st">"title"</span>: <span class="st">"华为 Mate 60 Pro"</span>, <span class="st">"price"</span>: <span class="nu">6999</span> }
+
+<span class="co"># 查询</span>
+GET  /products/_doc/<span class="nu">1</span>
+
+<span class="co"># 部分更新</span>
+POST /products/_update/<span class="nu">1</span>  { <span class="st">"doc"</span>: { <span class="st">"price"</span>: <span class="nu">8499</span> } }
+
+<span class="co"># 删除</span>
+DELETE /products/_doc/<span class="nu">1</span>
+
+<span class="co"># ===== 搜索 =====</span>
+<span class="co"># 全文搜索（会分词）</span>
+GET /products/_search
+{
+  <span class="st">"query"</span>: {
+    <span class="st">"match"</span>: { <span class="st">"title"</span>: <span class="st">"苹果手机 256G"</span> }
+  }
+}
+
+<span class="co"># 精确匹配（不分词）</span>
+GET /products/_search
+{ <span class="st">"query"</span>: { <span class="st">"term"</span>: { <span class="st">"category"</span>: <span class="st">"手机"</span> } } }
+
+<span class="co"># 范围查询 + 排序</span>
+GET /products/_search
+{
+  <span class="st">"query"</span>: {
+    <span class="st">"bool"</span>: {
+      <span class="st">"must"</span>:     [ { <span class="st">"match"</span>: { <span class="st">"title"</span>: <span class="st">"手机"</span> } } ],
+      <span class="st">"filter"</span>:   [ { <span class="st">"range"</span>: { <span class="st">"price"</span>: { <span class="st">"gte"</span>: <span class="nu">5000</span>, <span class="st">"lte"</span>: <span class="nu">10000</span> } } } ]
+    }
+  },
+  <span class="st">"sort"</span>: [ { <span class="st">"price"</span>: <span class="st">"asc"</span> } ],
+  <span class="st">"from"</span>: <span class="nu">0</span>, <span class="st">"size"</span>: <span class="nu">20</span>
+}
+
+<span class="co"># 聚合：按分类统计数量和平均价格</span>
+GET /products/_search
+{
+  <span class="st">"size"</span>: <span class="nu">0</span>,
+  <span class="st">"aggs"</span>: {
+    <span class="st">"by_category"</span>: {
+      <span class="st">"terms"</span>: { <span class="st">"field"</span>: <span class="st">"category"</span> },
+      <span class="st">"aggs"</span>: {
+        <span class="st">"avg_price"</span>: { <span class="st">"avg"</span>: { <span class="st">"field"</span>: <span class="st">"price"</span> } }
+      }
+    }
+  }
+}</pre>
+
+<h2 id="s9">九、常见应用场景</h2>
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>场景</th><th>怎么用</th><th>关键点</th></tr></thead>
+    <tbody>
+      <tr><td>商品搜索</td><td>商品信息从 MySQL 同步到 ES，搜索走 ES</td><td>分词 + 过滤 + 排序 + 聚合（类目、品牌）</td></tr>
+      <tr><td>日志分析 (ELK)</td><td>Filebeat → Logstash → ES → Kibana</td><td>按时间范围查询 + 聚合分析</td></tr>
+      <tr><td>智能客服</td><td>用户问题 → ES 搜索 FAQ 库 → 返回匹配答案</td><td>语义搜索可结合向量检索</td></tr>
+      <tr><td>自动补全</td><td>输入"苹" → suggester 返回"苹果手机"</td><td>Completion Suggester 比 match 快 10 倍</td></tr>
+      <tr><td>地理位置搜索</td><td>"附近 3km 的餐厅"</td><td>geo_point + geo_distance 查询</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2 id="s10">十、面试速记</h2>
+<div class="qa-grid">
+  <div class="qa-card"><div class="q">ES 的倒排索引是什么？为什么比 MySQL 搜得快？</div><div class="a">倒排索引：词条 → 文档列表。搜索时直接 O(1) 定位到包含该词的文档。"拿着词找文档" vs MySQL "拿着文档找词"。底层用 FST + SkipList + Frame of Reference 压缩，内存高效、IO 极少。</div></div>
+  <div class="qa-card"><div class="q">ES 和 MongoDB 区别，什么时候用谁？</div><div class="a">ES 是搜索引擎（倒排索引、分词、打分、高亮），MongoDB 是文档数据库（B-Tree、事务、高写入）。MySQL/MongoDB 主存储 + Canal 同步到 ES 搜索，是最佳实践。</div></div>
+  <div class="qa-card"><div class="q">ES 写入流程？为什么说是"近实时"？</div><div class="a">协调节点路由到主分片 → 主分片写入 translog + 内存 buffer → 默认 1s refresh 刷新 segment 可搜索 → translog 定期 fsync 到磁盘。refresh 间隔（默认 1s）就是"近实时"的原因。</div></div>
+  <div class="qa-card"><div class="q">ES 怎么保证数据不丢？</div><div class="a">translog（预写日志），每次写入先记录 translog。节点崩溃后从 translog 恢复。translog 默认每 5s 或每次请求后 fsync（可配置）。副本分片也提供冗余。</div></div>
+  <div class="qa-card"><div class="q">ES 分片数怎么设置？</div><div class="a">主分片数创建后不可改（影响路由 hash）。建议：单节点数据量不超过 50GB/分片，总分片数 = 数据量/50GB。小数据量用 1-3 个分片即可。</div></div>
+</div>
+
+<div class="doc-footer">
+  <p><strong>推荐阅读</strong>：ES 权威指南 · <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/index.html" style="color:var(--primary);">ES 官方文档</a></p>
+</div>
+
+</div>
+</body>
+</html>

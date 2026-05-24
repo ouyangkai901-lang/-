@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JDK 8 新特性详解 · Lambda / Stream / Optional</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #faf8f5;
+    --surface: #ffffff;
+    --surface2: #f5f0ea;
+    --border: #e3dbd0;
+    --text: #3d3929;
+    --text-dim: #8c8980;
+    --text-bright: #1e1b18;
+    --primary: #2563eb;
+    --green: #2d8a4e;
+    --orange: #b45309;
+    --purple: #7c3aed;
+    --red: #dc2626;
+    --cyan: #0d9488;
+    --pink: #be185d;
+  }
+
+  body {
+    font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.85;
+    min-height: 100vh;
+  }
+
+  .container { max-width: 1000px; margin: 0 auto; padding: 40px 24px 80px; }
+
+  .toc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px 28px;
+    margin: 0 0 40px;
+  }
+  .toc h3 { font-size: 16px; color: var(--text-bright); margin-bottom: 14px; }
+  .toc ol { columns: 2; column-gap: 24px; padding-left: 20px; font-size: 13px; line-height: 2.2; }
+  .toc ol li a { color: var(--primary); text-decoration: none; }
+  .toc ol li a:hover { text-decoration: underline; }
+
+  .doc-header {
+    text-align: center; padding: 60px 0 50px; position: relative;
+  }
+  .doc-header::after {
+    content: ''; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+    width: 100px; height: 3px;
+    background: linear-gradient(90deg, transparent, var(--primary), transparent);
+    border-radius: 2px;
+  }
+  .doc-header h1 {
+    font-size: 34px; font-weight: 900; color: var(--text-bright);
+    letter-spacing: -0.5px; margin-bottom: 8px;
+  }
+  .doc-header .ref {
+    font-size: 14px; color: var(--text-dim); font-weight: 300;
+  }
+
+  h2 {
+    font-size: 24px; font-weight: 700; color: var(--text-bright);
+    margin: 48px 0 20px; padding-bottom: 10px; border-bottom: 2px solid var(--border);
+  }
+  h3 {
+    font-size: 18px; font-weight: 600; color: var(--text-bright);
+    margin: 32px 0 14px;
+  }
+  h4 {
+    font-size: 15px; font-weight: 600; color: var(--text-bright);
+    margin: 22px 0 10px;
+  }
+  p { margin-bottom: 14px; font-size: 15px; }
+  p strong { color: var(--text-bright); }
+  code {
+    font-family: 'JetBrains Mono', monospace; background: var(--surface2);
+    padding: 2px 6px; border-radius: 4px; font-size: 13px; color: var(--red);
+  }
+
+  pre {
+    background: #1e1b18; color: #e8e4dc; padding: 18px 22px;
+    border-radius: 10px; overflow-x: auto;
+    font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.75;
+    margin: 14px 0; border: 1px solid #3d3929;
+  }
+  pre .co { color: #546e7a; }
+  pre .kw { color: #c792ea; }
+  pre .tp { color: #ffcb6b; }
+  pre .fn { color: #82aaff; }
+  pre .st { color: #c3e88d; }
+  pre .nu { color: #f78c6c; }
+  pre .red { color: #f07178; }
+  pre .grn { color: #c3e88d; }
+
+  .table-wrap { overflow-x: auto; margin: 14px 0 22px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 600px; }
+  thead th {
+    background: var(--surface2); padding: 10px 14px; border: 1px solid var(--border);
+    text-align: left; font-weight: 600; color: var(--text-bright);
+  }
+  tbody td { padding: 10px 14px; border: 1px solid var(--border); vertical-align: top; }
+  tbody tr:nth-child(even) { background: rgba(0,0,0,0.015); }
+  tbody td:first-child { font-weight: 600; white-space: nowrap; }
+
+  .callout {
+    background: rgba(37, 99, 235, 0.06); border-left: 4px solid var(--primary);
+    padding: 14px 18px; border-radius: 0 8px 8px 0; margin: 14px 0; font-size: 14px;
+  }
+  .callout.warn {
+    background: rgba(220, 38, 38, 0.06); border-left-color: var(--red);
+  }
+  .callout.tip {
+    background: rgba(45, 138, 78, 0.06); border-left-color: var(--green);
+  }
+  .callout strong { color: var(--text-bright); }
+
+  .diagram {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 18px 22px; margin: 14px 0; font-family: 'JetBrains Mono', monospace;
+    font-size: 13px; line-height: 1.8; text-align: center; white-space: pre;
+  }
+  .diagram.label { text-align: left; }
+  .diagram .red { color: var(--red); }
+  .diagram .grn { color: var(--green); }
+  .diagram .blu { color: var(--primary); }
+
+  .compare-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 14px 0;
+  }
+  .compare-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 16px 20px;
+  }
+  .compare-card h4 { margin-top: 0; }
+  .compare-card.bad { border-left: 3px solid var(--red); }
+  .compare-card.good { border-left: 3px solid var(--green); }
+
+  .steps { counter-reset: step; margin: 14px 0; }
+  .step {
+    counter-increment: step; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px 18px; margin: 8px 0; font-size: 14px;
+  }
+  .step::before {
+    content: counter(step);
+    display: inline-block; width: 24px; height: 24px;
+    background: var(--primary); color: #fff; border-radius: 50%;
+    text-align: center; line-height: 24px; font-size: 12px; font-weight: 700;
+    margin-right: 12px; flex-shrink: 0;
+  }
+
+  .feature-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 14px 0;
+  }
+  .feature-tag {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px 14px; font-size: 13px; text-align: center;
+    font-weight: 500; color: var(--text-bright);
+  }
+  .feature-tag .icon { font-size: 20px; display: block; margin-bottom: 4px; }
+
+  .qa-grid { display: grid; grid-template-columns: 1fr; gap: 10px; margin: 14px 0; }
+  .qa-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px 18px;
+  }
+  .qa-card .q { font-weight: 700; color: var(--text-bright); font-size: 14px; margin-bottom: 4px; }
+  .qa-card .a { font-size: 13px; color: var(--text-dim); }
+
+  .doc-footer {
+    margin-top: 60px; padding: 30px 0; border-top: 1px solid var(--border);
+    color: var(--text-dim); font-size: 13px;
+  }
+
+  @media (max-width: 768px) {
+    .doc-header h1 { font-size: 24px; }
+    h2 { font-size: 20px; }
+    .compare-grid, .feature-grid { grid-template-columns: 1fr; }
+    .toc ol { columns: 1; }
+    pre { font-size: 11px; padding: 12px 14px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="doc-header">
+    <h1>JDK 8 新特性详解</h1>
+    <p class="ref">覆盖 Lambda / 函数式接口 / Stream / Optional / 方法引用 / 新日期 API / 接口默认方法 / CompletableFuture</p>
+  </div>
+
+  <div class="toc">
+    <h3>📑 目录</h3>
+    <ol>
+      <li><a href="#s1">Lambda 表达式 —— 行为参数化</a></li>
+      <li><a href="#s2">函数式接口 —— 四大核心接口</a></li>
+      <li><a href="#s3">方法引用与构造器引用</a></li>
+      <li><a href="#s4">Stream API —— 流式编程</a></li>
+      <li><a href="#s5">Collectors —— 收集器大全</a></li>
+      <li><a href="#s6">Optional —— 优雅处理 null</a></li>
+      <li><a href="#s7">接口默认方法与静态方法</a></li>
+      <li><a href="#s8">新的日期时间 API (java.time)</a></li>
+      <li><a href="#s9">CompletableFuture</a></li>
+      <li><a href="#s10">其他重要特性</a></li>
+      <li><a href="#s11">面试速记</a></li>
+    </ol>
+  </div>
+
+  <!-- ==================== 一、Lambda ==================== -->
+  <h2 id="s1">一、Lambda 表达式 —— 行为参数化</h2>
+
+  <p>Lambda 的本质是一段<strong>可传递的行为</strong>（代码片段），让你能像传数据一样传"做什么"。</p>
+
+  <h3>1.1 从匿名内部类到 Lambda</h3>
+  <div class="compare-grid">
+    <div class="compare-card bad">
+      <h4>JDK 7：匿名内部类</h4>
+      <pre style="background:transparent;color:var(--text);padding:0;font-size:12px;"><span class="kw">new</span> <span class="tp">Thread</span>(<span class="kw">new</span> <span class="tp">Runnable</span>() {
+    <span class="kw">public</span> <span class="tp">void</span> <span class="fn">run</span>() {
+        System.out.println(<span class="st">"hello"</span>);
+    }
+}).start();</pre>
+      <p style="font-size:12px;color:var(--text-dim);">6 行，大量模板代码</p>
+    </div>
+    <div class="compare-card good">
+      <h4>JDK 8：Lambda</h4>
+      <pre style="background:transparent;color:var(--text);padding:0;font-size:12px;"><span class="kw">new</span> <span class="tp">Thread</span>(() ->
+    System.out.println(<span class="st">"hello"</span>)
+).start();</pre>
+      <p style="font-size:12px;color:var(--text-dim);">3 行，只关注行为本身</p>
+    </div>
+  </div>
+
+  <h3>1.2 Lambda 语法</h3>
+  <pre><span class="co">// 基本格式：(参数) -> { 方法体 }</span>
+
+<span class="co">// 无参，无返回值</span>
+() -> System.out.println(<span class="st">"hello"</span>)
+
+<span class="co">// 一个参数（可省略括号），有返回值</span>
+x -> x * <span class="nu">2</span>
+
+<span class="co">// 多个参数，多行方法体</span>
+(x, y) -> {
+    <span class="tp">int</span> result = x + y;
+    <span class="kw">return</span> result;
+}
+
+<span class="co">// 类型声明（通常省略，靠类型推断）</span>
+(<span class="tp">String</span> s) -> s.length()</pre>
+
+  <div class="callout">
+    <strong>Lambda 的本质：</strong>它是<strong>函数式接口</strong>的实例。一个 Lambda 表达式能赋值给一个函数式接口类型的变量，编译器自动推断目标类型（<strong>类型推断</strong>）。
+  </div>
+
+  <h3>1.3 Lambda 中使用局部变量 —— 必须"有效 final"</h3>
+  <pre><span class="tp">int</span> num = <span class="nu">10</span>;                <span class="co">// 有效 final（未被修改过）</span>
+<span class="tp">Runnable</span> r = () -> System.out.println(num);
+<span class="co">// num = 20; ← 如果加了这行，上面的 Lambda 就编译失败</span></pre>
+
+  <p>原因：Lambda 本质上是匿名内部类的语法糖，局部变量被<strong>拷贝</strong>到 Lambda 表达式中。如果允许修改，会导致数据不一致。</p>
+
+  <!-- ==================== 二、函数式接口 ==================== -->
+  <h2 id="s2">二、函数式接口 —— 四大核心接口</h2>
+
+  <p><strong>函数式接口</strong>：只有一个抽象方法的接口（可以有默认方法和静态方法）。用 <code>@FunctionalInterface</code> 注解标记。</p>
+
+  <div class="diagram label">
+<strong>JDK 8 内置的四大核心函数式接口：</strong>
+
+  ┌─────────────────────────────────────────────────────┐
+  │  <strong>Supplier&lt;T&gt;</strong>     供给型  () -&gt; T                  │
+  │  <strong>Consumer&lt;T&gt;</strong>     消费型  T -&gt; void              │
+  │  <strong>Function&lt;T,R&gt;</strong>   函数型  T -&gt; R                  │
+  │  <strong>Predicate&lt;T&gt;</strong>   断言型  T -&gt; boolean            │
+  └─────────────────────────────────────────────────────┘
+  </div>
+
+  <pre><span class="co">// Supplier —— 无中生有（工厂、懒加载）</span>
+<span class="tp">Supplier</span>&lt;String&gt; supplier = () -&gt; <span class="st">"hello"</span>;
+String s = supplier.<span class="fn">get</span>();  <span class="co">// "hello"</span>
+<span class="co">// 典型场景：Optional.orElseGet(Supplier)</span>
+
+<span class="co">// Consumer —— 消费掉（forEach、回调）</span>
+<span class="tp">Consumer</span>&lt;String&gt; consumer = str -> System.out.println(str);
+consumer.<span class="fn">accept</span>(<span class="st">"hello"</span>);
+<span class="co">// 典型场景：list.forEach(consumer)、peek(consumer)</span>
+
+<span class="co">// Function —— 转换（map）</span>
+<span class="tp">Function</span>&lt;String, Integer&gt; func = String::length;
+Integer len = func.<span class="fn">apply</span>(<span class="st">"hello"</span>);  <span class="co">// 5</span>
+<span class="co">// 典型场景：stream.map(function)</span>
+
+<span class="co">// Predicate —— 判断（filter）</span>
+<span class="tp">Predicate</span>&lt;String&gt; pred = str -> str.length() > <span class="nu">3</span>;
+<span class="tp">boolean</span> b = pred.<span class="fn">test</span>(<span class="st">"hi"</span>);  <span class="co">// false</span>
+<span class="co">// 典型场景：stream.filter(predicate)</span>
+
+<span class="co">// 组合使用：and / or / negate / andThen / compose</span>
+<span class="tp">Predicate</span>&lt;String&gt; notEmpty = str -> !str.isEmpty();
+<span class="tp">Predicate</span>&lt;String&gt; longEnough = str -> str.length() > <span class="nu">5</span>;
+<span class="tp">Predicate</span>&lt;String&gt; valid = notEmpty.<span class="fn">and</span>(longEnough);  <span class="co">// 同时满足两个条件</span></pre>
+
+  <h3>2.1 其他常用函数式接口</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>接口</th><th>签名</th><th>用途</th></tr></thead>
+      <tbody>
+        <tr><td><code>BiFunction&lt;T,U,R&gt;</code></td><td>(T, U) → R</td><td>两个参数、有返回值</td></tr>
+        <tr><td><code>BiConsumer&lt;T,U&gt;</code></td><td>(T, U) → void</td><td>两个参数的消费者</td></tr>
+        <tr><td><code>UnaryOperator&lt;T&gt;</code></td><td>T → T</td><td>一元运算（入参出参同类型），extends Function</td></tr>
+        <tr><td><code>BinaryOperator&lt;T&gt;</code></td><td>(T, T) → T</td><td>二元运算（reduce 使用）</td></tr>
+        <tr><td><code>IntFunction&lt;R&gt;</code></td><td>int → R</td><td>避免装箱（Int/Long/Double 变种）</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ==================== 三、方法引用 ==================== -->
+  <h2 id="s3">三、方法引用与构造器引用</h2>
+
+  <p>当 Lambda 表达式的内容<strong>只是调用一个已有方法</strong>时，可以简写为方法引用。方法引用比 Lambda 更简洁，可读性更强。</p>
+
+  <pre><span class="co">// 四种方法引用形式：</span>
+
+<span class="co">// ① 静态方法引用  ClassName::staticMethod</span>
+<span class="tp">Function</span>&lt;String, Integer&gt; f1 = Integer::parseInt;  <span class="co">// s -> Integer.parseInt(s)</span>
+
+<span class="co">// ② 实例方法引用  instance::method</span>
+String prefix = <span class="st">"Hello "</span>;
+<span class="tp">Function</span>&lt;String, String&gt; f2 = prefix::concat;    <span class="co">// s -> prefix.concat(s)</span>
+
+<span class="co">// ③ 对象方法引用  ClassName::instanceMethod</span>
+<span class="tp">Function</span>&lt;String, Integer&gt; f3 = String::length;    <span class="co">// s -> s.length()</span>
+<span class="co">//    ↑ 注意：第一个参数成为方法调用的"接收者"</span>
+
+<span class="co">// ④ 构造器引用  ClassName::new</span>
+<span class="tp">Supplier</span>&lt;ArrayList&lt;String&gt;&gt; f4 = ArrayList::<span class="kw">new</span>;    <span class="co">// () -> new ArrayList<>()</span>
+<span class="tp">Function</span>&lt;Integer, ArrayList&lt;String&gt;&gt; f5 = ArrayList::<span class="kw">new</span>; <span class="co">// size -> new ArrayList<>(size)</span></pre>
+
+  <div class="callout tip">
+    <strong>什么时候用方法引用代替 Lambda？</strong><br>
+    当 Lambda 体中<strong>只有一个方法调用</strong>且参数完全匹配时。例如 <code>x -> String.valueOf(x)</code> → <code>String::valueOf</code>。更可读，IDE 也会提示转换。
+  </div>
+
+  <!-- ==================== 四、Stream ==================== -->
+  <h2 id="s4">四、Stream API —— 流式编程</h2>
+
+  <p>Stream 是 JDK 8 最重要的特性，它提供了一套<strong>声明式处理集合数据</strong>的工具。核心思想：<strong>做什么，而不是怎么做</strong>。</p>
+
+  <h3>4.1 Stream 的三大组成部分</h3>
+  <div class="diagram label">
+<strong>Stream 操作流水线：</strong>
+
+  数据源 → 中间操作(可多个) → 终端操作(触发计算)
+
+  ┌──────────┐     ┌──────────────┐     ┌──────────────┐
+  │ ① 创建流  │ ──→ │ ② 中间操作(N个) │ ──→ │ ③ 终端操作    │
+  │ list      │     │ filter        │     │ collect      │
+  │ Stream.of │     │ map           │     │ forEach      │
+  │ Arrays.   │     │ sorted        │     │ reduce       │
+  │  stream   │     │ distinct      │     │ count        │
+  │           │     │ limit/skip    │     │ findFirst    │
+  └──────────┘     └──────────────┘     └──────────────┘
+     (懒)               (懒, 可链式)          (触发计算)
+  </div>
+
+  <div class="callout warn">
+    <strong>关键特性：</strong><br>
+    · 中间操作<strong>惰性求值</strong>：不调用终端操作，中间操作不执行<br>
+    · Stream <strong>不存储数据</strong>：只是数据的"视图"，不改变原集合<br>
+    · Stream <strong>只能消费一次</strong>：终端操作执行后，流就关闭了
+  </div>
+
+  <h3>4.2 创建 Stream 的方式</h3>
+  <pre><span class="co">// ① 从集合</span>
+List&lt;String&gt; list = Arrays.asList(<span class="st">"a"</span>, <span class="st">"b"</span>, <span class="st">"c"</span>);
+Stream&lt;String&gt; s1 = list.<span class="fn">stream</span>();           <span class="co">// 串行流</span>
+Stream&lt;String&gt; s2 = list.<span class="fn">parallelStream</span>();  <span class="co">// 并行流</span>
+
+<span class="co">// ② 从数组</span>
+<span class="tp">int</span>[] arr = {<span class="nu">1</span>, <span class="nu">2</span>, <span class="nu">3</span>};
+IntStream s3 = Arrays.<span class="fn">stream</span>(arr);
+
+<span class="co">// ③ 直接创建</span>
+Stream&lt;String&gt; s4 = Stream.<span class="fn">of</span>(<span class="st">"a"</span>, <span class="st">"b"</span>, <span class="st">"c"</span>);
+Stream&lt;Integer&gt; s5 = Stream.<span class="fn">iterate</span>(<span class="nu">0</span>, n -> n + <span class="nu">2</span>); <span class="co">// 无限流 → 必须 limit</span>
+Stream&lt;Double&gt; s6  = Stream.<span class="fn">generate</span>(Math::random);  <span class="co">// 无限流</span>
+
+<span class="co">// ④ 文件行流</span>
+Stream&lt;String&gt; lines = Files.<span class="fn">lines</span>(Paths.<span class="fn">get</span>(<span class="st">"file.txt"</span>));</pre>
+
+  <h3>4.3 常用中间操作</h3>
+  <pre><span class="co">// ===== filter：过滤 =====</span>
+list.stream().<span class="fn">filter</span>(s -> s.length() > <span class="nu">3</span>)
+
+<span class="co">// ===== map：转换 =====</span>
+list.stream().<span class="fn">map</span>(String::toUpperCase)           <span class="co">// 每个元素映射为新值</span>
+list.stream().<span class="fn">flatMap</span>(s -> Arrays.stream(s.split(<span class="st">","</span>)))  <span class="co">// 扁平化：[[a,b], [c,d]] → [a,b,c,d]</span>
+
+<span class="co">// ===== sorted：排序 =====</span>
+list.stream().<span class="fn">sorted</span>()                             <span class="co">// 自然排序</span>
+list.stream().<span class="fn">sorted</span>(Comparator.comparing(User::getAge).reversed())
+
+<span class="co">// ===== distinct / limit / skip =====</span>
+list.stream().<span class="fn">distinct</span>()                         <span class="co">// 去重（基于 equals）</span>
+list.stream().<span class="fn">limit</span>(<span class="nu">10</span>)                           <span class="co">// 取前 10 个</span>
+list.stream().<span class="fn">skip</span>(<span class="nu">5</span>)                            <span class="co">// 跳过前 5 个</span>
+
+<span class="co">// ===== peek：调试用（看一眼但不消费）=====</span>
+list.stream().<span class="fn">peek</span>(System.out::println)           <span class="co">// 每个元素都打印</span></pre>
+
+  <h3>4.4 map vs flatMap —— 最容易混淆的两个方法</h3>
+  <pre><span class="co">// 场景：把 ["hello", "world"] 拆成 ['h','e','l','l','o','w','o','r','l','d']</span>
+
+<span class="co">// ❌ 错误：用 map → 得到的是 Stream&lt;Stream&lt;Character&gt;&gt;</span>
+list.stream().<span class="fn">map</span>(s -> s.chars().mapToObj(c -> (<span class="tp">char</span>) c))
+<span class="co">//  → Stream&lt;Stream&lt;Character&gt;&gt; 不是我们想要的</span>
+
+<span class="co">// ✅ 正确：用 flatMap → 扁平化</span>
+list.stream().<span class="fn">flatMap</span>(s -> s.chars().mapToObj(c -> (<span class="tp">char</span>) c))
+<span class="co">//  → Stream&lt;Character&gt;</span>
+
+<span class="co">// 口诀：map = 一一映射，flatMap = 一对多映射 + 压扁</span></pre>
+
+  <h3>4.5 常用终端操作</h3>
+  <pre><span class="co">// ===== 收集：collect =====</span>
+List&lt;String&gt; newList = list.stream().<span class="fn">collect</span>(Collectors.toList());
+
+<span class="co">// ===== 遍历：forEach / forEachOrdered =====</span>
+list.stream().<span class="fn">forEach</span>(System.out::println);     <span class="co">// 并行时不保证顺序</span>
+list.stream().<span class="fn">forEachOrdered</span>(System.out::println); <span class="co">// 保证顺序</span>
+
+<span class="co">// ===== 归约：reduce =====</span>
+<span class="tp">int</span> sum = IntStream.<span class="fn">of</span>(<span class="nu">1</span>, <span class="nu">2</span>, <span class="nu">3</span>).<span class="fn">reduce</span>(<span class="nu">0</span>, Integer::sum);  <span class="co">// 6</span>
+<span class="co">// reduce(初始值, 累加器)</span>
+
+<span class="co">// ===== 查找：findFirst / findAny =====</span>
+Optional&lt;String&gt; first = list.stream().<span class="fn">findFirst</span>();  <span class="co">// 第一个</span>
+Optional&lt;String&gt; any   = list.stream().<span class="fn">findAny</span>();    <span class="co">// 任意一个（并行时更快）</span>
+
+<span class="co">// ===== 匹配：allMatch / anyMatch / noneMatch =====</span>
+<span class="tp">boolean</span> all = list.stream().<span class="fn">allMatch</span>(s -> s.length() > <span class="nu">2</span>);
+<span class="tp">boolean</span> any = list.stream().<span class="fn">anyMatch</span>(s -> s.startsWith(<span class="st">"A"</span>));
+
+<span class="co">// ===== 聚合：count / max / min =====</span>
+<span class="tp">long</span> count = list.stream().<span class="fn">count</span>();
+Optional&lt;Integer&gt; max = list.stream().<span class="fn">map</span>(String::length).<span class="fn">max</span>(Integer::compareTo);</pre>
+
+  <h3>4.6 数值流 —— 避免装箱开销</h3>
+  <pre><span class="co">// IntStream / LongStream / DoubleStream 专门处理基本类型，避免装箱</span>
+
+IntStream.<span class="fn">range</span>(<span class="nu">1</span>, <span class="nu">100</span>)                  <span class="co">// [1, 100)</span>
+IntStream.<span class="fn">rangeClosed</span>(<span class="nu">1</span>, <span class="nu">100</span>)            <span class="co">// [1, 100]</span>
+
+<span class="co">// 普通 Stream → 数值流</span>
+list.stream().<span class="fn">mapToInt</span>(String::length)   <span class="co">// Stream&lt;String&gt; → IntStream</span>
+
+<span class="co">// 数值流 → 普通 Stream（装箱）</span>
+IntStream.<span class="fn">of</span>(<span class="nu">1</span>, <span class="nu">2</span>, <span class="nu">3</span>).<span class="fn">boxed</span>()       <span class="co">// IntStream → Stream&lt;Integer&gt;</span>
+
+<span class="co">// 数值流特有方法：sum / average / summaryStatistics</span>
+<span class="tp">int</span> sum = IntStream.<span class="fn">of</span>(<span class="nu">1</span>, <span class="nu">2</span>, <span class="nu">3</span>).<span class="fn">sum</span>();
+IntSummaryStatistics stats = IntStream.<span class="fn">of</span>(<span class="nu">1</span>, <span class="nu">2</span>, <span class="nu">3</span>).<span class="fn">summaryStatistics</span>();
+<span class="co">// stats.getCount(), getSum(), getMin(), getMax(), getAverage()</span></pre>
+
+  <h3>4.7 并行流 —— 一行代码实现并行</h3>
+  <pre><span class="co">// 串行 → 并行只需一个方法调用</span>
+list.stream().<span class="fn">filter</span>(...).<span class="fn">collect</span>(...);                     <span class="co">// 串行</span>
+list.parallelStream().<span class="fn">filter</span>(...).<span class="fn">collect</span>(...);            <span class="co">// 并行</span>
+list.stream().<span class="fn">parallel</span>().<span class="fn">filter</span>(...).<span class="fn">sequential</span>()...; <span class="co">// 动态切换</span></pre>
+
+  <div class="callout warn">
+    <strong>并行流慎用场景：</strong><br>
+    · 数据量小（&lt; 1000 条）→ 线程调度开销 > 并行收益<br>
+    · 有状态中间操作（distinct、sorted）→ 并行效率低<br>
+    · 操作有副作用 → 线程不安全<br>
+    · 底层用 ForkJoinPool.commonPool()，注意别阻塞
+  </div>
+
+  <!-- ==================== 五、Collectors ==================== -->
+  <h2 id="s5">五、Collectors —— 收集器大全</h2>
+
+  <p><code>Collectors</code> 是 Stream 的"终点站工具箱"，提供了几十种预定义的收集方式。</p>
+
+  <pre><span class="co">// ===== 转集合 =====</span>
+.<span class="fn">collect</span>(Collectors.toList())                      <span class="co">// → ArrayList</span>
+.<span class="fn">collect</span>(Collectors.toSet())                       <span class="co">// → HashSet</span>
+.<span class="fn">collect</span>(Collectors.toCollection(TreeSet::<span class="kw">new</span>))   <span class="co">// → 指定集合类型</span>
+
+<span class="co">// ===== 转 Map =====</span>
+.<span class="fn">collect</span>(Collectors.toMap(
+    User::getId,           <span class="co">// keyMapper</span>
+    Function.identity(),   <span class="co">// valueMapper</span>
+    (old, <span class="kw">new</span>) -> <span class="kw">new</span>      <span class="co">// mergeFunction: key 冲突时选新值</span>
+))
+<span class="co">// JDK 21: .collect(Collectors.toMap(User::id, Function.identity())) 无需 merge 函数</span>
+
+<span class="co">// ===== 分组 =====</span>
+.<span class="fn">collect</span>(Collectors.groupingBy(User::getDept))               <span class="co">// → Map&lt;String, List&lt;User&gt;&gt;</span>
+.<span class="fn">collect</span>(Collectors.groupingBy(User::getDept,
+    Collectors.counting()))                                      <span class="co">// → Map&lt;String, Long&gt; 统计人数</span>
+.<span class="fn">collect</span>(Collectors.groupingBy(User::getDept,
+    Collectors.mapping(User::getName, Collectors.toList())))    <span class="co">// 分组后提取某个字段</span>
+
+<span class="co">// ===== 分区（只能是 true / false 两组）=====</span>
+.<span class="fn">collect</span>(Collectors.partitioningBy(user -> user.getAge() >= <span class="nu">18</span>))
+<span class="co">// → Map&lt;Boolean, List&lt;User&gt;&gt;</span>
+
+<span class="co">// ===== 拼接 =====</span>
+.<span class="fn">collect</span>(Collectors.joining())                    <span class="co">// → "abc"</span>
+.<span class="fn">collect</span>(Collectors.joining(<span class="st">", "</span>))                <span class="co">// → "a, b, c"</span>
+.<span class="fn">collect</span>(Collectors.joining(<span class="st">", "</span>, <span class="st">"["</span>, <span class="st">"]"</span>))    <span class="co">// → "[a, b, c]"</span>
+
+<span class="co">// ===== 统计 =====</span>
+.<span class="fn">collect</span>(Collectors.counting())
+.<span class="fn">collect</span>(Collectors.summingInt(User::getAge))
+.<span class="fn">collect</span>(Collectors.averagingInt(User::getAge))
+.<span class="fn">collect</span>(Collectors.summarizingInt(User::getAge))  <span class="co">// count + sum + min + avg + max</span>
+
+<span class="co">// ===== 最大 / 最小 =====</span>
+.<span class="fn">collect</span>(Collectors.maxBy(Comparator.comparing(User::getAge)))
+.<span class="fn">collect</span>(Collectors.minBy(Comparator.comparing(User::getAge)))
+
+<span class="co">// ===== reducing (一般直接用 reduce 或特定方法，reducing 较底层) =====</span>
+.<span class="fn">collect</span>(Collectors.reducing(<span class="nu">0</span>, User::getAge, Integer::sum))</pre>
+
+  <h3>5.1 实战：嵌套分组 + 统计</h3>
+  <pre><span class="co">// 场景：按部门分组，再按城市分组，统计平均工资</span>
+Map&lt;String, Map&lt;String, Double&gt;&gt; result = users.stream()
+    .<span class="fn">collect</span>(Collectors.groupingBy(
+        User::getDept,                                    <span class="co">// 第一层：部门</span>
+        Collectors.groupingBy(
+            User::getCity,                                <span class="co">// 第二层：城市</span>
+            Collectors.averagingDouble(User::getSalary)    <span class="co">// 第三层：平均工资</span>
+        )
+    ));</pre>
+
+  <!-- ==================== 六、Optional ==================== -->
+  <h2 id="s6">六、Optional —— 优雅处理 null</h2>
+
+  <p>Optional 是一个<strong>容器对象</strong>，可能包含也可能不包含非 null 值。它的设计目标是<strong>取代 null 检查</strong>，减少 NPE。</p>
+
+  <h3>6.1 创建 Optional</h3>
+  <pre><span class="co">// 三种创建方式</span>
+Optional&lt;String&gt; opt1 = Optional.<span class="fn">of</span>(<span class="st">"hello"</span>);         <span class="co">// 非 null 值，null 则抛 NPE</span>
+Optional&lt;String&gt; opt2 = Optional.<span class="fn">ofNullable</span>(getValue()); <span class="co">// 可以为 null（最常用）</span>
+Optional&lt;String&gt; opt3 = Optional.<span class="fn">empty</span>();               <span class="co">// 空 Optional</span></pre>
+
+  <h3>6.2 提取值</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>方法</th><th>有值时</th><th>无值时</th><th>推荐？</th></tr></thead>
+      <tbody>
+        <tr><td><code>get()</code></td><td>返回值</td><td style="color:var(--red);">抛 NoSuchElementException</td><td style="color:var(--red);">❌ 别用</td></tr>
+        <tr><td><code>orElse(T other)</code></td><td>返回值</td><td>返回 other</td><td style="color:var(--orange);">⚠️ 即使有值也会执行 other 的构造</td></tr>
+        <tr><td><code>orElseGet(Supplier)</code></td><td>返回值</td><td>执行 Supplier 返回</td><td style="color:var(--green);">✅ 推荐，懒加载</td></tr>
+        <tr><td><code>orElseThrow(Supplier)</code></td><td>返回值</td><td>抛出自定义异常</td><td style="color:var(--green);">✅ 业务异常场景</td></tr>
+        <tr><td><code>ifPresent(Consumer)</code></td><td>执行 Consumer</td><td>什么都不做</td><td style="color:var(--green);">✅</td></tr>
+        <tr><td><code>ifPresentOrElse(Consumer, Runnable)</code></td><td>执行 Consumer</td><td>执行 Runnable</td><td style="color:var(--green);">✅ JDK 9+</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>6.3 orElse vs orElseGet —— 一个经典坑</h3>
+  <pre><span class="co">// ❌ 错误用法：即使 value 不为 null，expensiveOperation() 也会被执行！</span>
+String result = optional.<span class="fn">orElse</span>(<span class="fn">expensiveOperation</span>());
+
+<span class="co">// ✅ 正确用法：只有 value 为 null 时才会执行</span>
+String result = optional.<span class="fn">orElseGet</span>(() -> <span class="fn">expensiveOperation</span>());
+
+<span class="co">// 原因：Java 方法调用会先计算参数的值，再传入方法。
+//       orElse(x) 中的 x 在调用前就已经计算好了。</span></pre>
+
+  <h3>6.4 链式操作</h3>
+  <pre><span class="co">// ===== map：转换值 =====</span>
+Optional&lt;String&gt; name = userOpt.<span class="fn">map</span>(User::getName);
+
+<span class="co">// ===== flatMap：防止 Optional 嵌套 =====</span>
+<span class="co">// user.getAddress() 返回 Optional&lt;Address&gt;</span>
+<span class="co">// 如果直接 map → Optional&lt;Optional&lt;Address&gt;&gt; 嵌套！</span>
+Optional&lt;String&gt; city = userOpt
+    .<span class="fn">flatMap</span>(User::getAddress)      <span class="co">// 扁平化，得到 Optional&lt;Address&gt;</span>
+    .<span class="fn">map</span>(Address::getCity);         <span class="co">// 继续转换</span>
+
+<span class="co">// ===== filter：过滤 =====</span>
+Optional&lt;User&gt; adult = userOpt.<span class="fn">filter</span>(u -> u.getAge() >= <span class="nu">18</span>);
+
+<span class="co">// ===== 实战：优雅处理级联调用 =====</span>
+<span class="co">// JDK 7：</span>
+String city = <span class="kw">null</span>;
+<span class="kw">if</span> (user != <span class="kw">null</span>) {
+    Address addr = user.getAddress();
+    <span class="kw">if</span> (addr != <span class="kw">null</span>) {
+        city = addr.getCity();
+    }
+}
+
+<span class="co">// JDK 8：</span>
+String city = Optional.ofNullable(user)
+    .<span class="fn">map</span>(User::getAddress)
+    .<span class="fn">map</span>(Address::getCity)
+    .<span class="fn">orElse</span>(<span class="st">"Unknown"</span>);</pre>
+
+  <div class="callout warn">
+    <strong>Optional 使用原则（来自 Optional 作者 Brian Goetz）：</strong><br>
+    · 不要用 Optional 做字段类型（不是 Serializable）<br>
+    · 不要用 Optional 做方法参数<br>
+    · Optional 只应该作为<strong>返回值</strong>使用<br>
+    · 不要调用 <code>get()</code>，它只是给旧代码的"逃生门"
+  </div>
+
+  <!-- ==================== 七、接口默认方法 ==================== -->
+  <h2 id="s7">七、接口默认方法与静态方法</h2>
+
+  <p>JDK 8 之前，接口只能有抽象方法。JDK 8 允许接口有<strong>默认方法（default method）</strong>和<strong>静态方法（static method）</strong>。</p>
+
+  <pre><span class="kw">public</span> <span class="kw">interface</span> <span class="tp">Vehicle</span> {
+
+    <span class="co">// 抽象方法（必须实现）</span>
+    <span class="tp">void</span> <span class="fn">start</span>();
+
+    <span class="co">// 默认方法（子类可选覆盖）</span>
+    <span class="kw">default</span> <span class="tp">void</span> <span class="fn">honk</span>() {
+        System.out.println(<span class="st">"嘀嘀嘀"</span>);
+    }
+
+    <span class="co">// 静态方法（只能通过接口名调用）</span>
+    <span class="kw">static</span> <span class="tp">boolean</span> <span class="fn">isFast</span>(<span class="tp">int</span> speed) {
+        <span class="kw">return</span> speed > <span class="nu">120</span>;
+    }
+}
+
+<span class="co">// 多继承冲突：实现两个接口，有同名默认方法 → 必须手动选择</span>
+<span class="kw">public</span> <span class="kw">class</span> <span class="tp">Car</span> <span class="kw">implements</span> <span class="tp">A</span>, <span class="tp">B</span> {
+    <span class="kw">public</span> <span class="tp">void</span> <span class="fn">doSomething</span>() {
+        A.<span class="kw">super</span>.<span class="fn">doSomething</span>();  <span class="co">// 明确选 A 的方法</span>
+    }
+}
+
+<span class="co">// 类优先：类中的方法优先级 > 接口默认方法</span></pre>
+
+  <p><strong>为什么引入默认方法？</strong>主要是为了给 Collection 接口加 <code>stream()</code> 方法。如果直接加抽象方法，所有 Collection 的实现类（包括你写的）全都编译报错。default 方法可以不破坏已有实现。</p>
+
+  <div class="callout">
+    <strong>接口 vs 抽象类（JDK 8 之后）：</strong><br>
+    接口仍然不能有构造器、不能有实例字段、不能有非 public 方法。区别的核心在于"<strong>能不能有状态</strong>"，接口只能有行为（方法），不能有状态（字段）。
+  </div>
+
+  <!-- ==================== 八、新日期API ==================== -->
+  <h2 id="s8">八、新的日期时间 API —— java.time</h2>
+
+  <p>JDK 8 之前的 <code>java.util.Date</code> 和 <code>Calendar</code> 设计糟糕（可变、非线程安全、月份从 0 开始、Date 同时表示日期+时间...）。JDK 8 在 Joda-Time 的基础上设计了全新的 java.time 包。</p>
+
+  <h3>8.1 核心类速览</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>类</th><th>描述</th><th>示例</th></tr></thead>
+      <tbody>
+        <tr><td><code>LocalDate</code></td><td>日期（年月日）</td><td>2024-03-15</td></tr>
+        <tr><td><code>LocalTime</code></td><td>时间（时分秒）</td><td>14:30:00</td></tr>
+        <tr><td><code>LocalDateTime</code></td><td>日期+时间</td><td>2024-03-15T14:30:00</td></tr>
+        <tr><td><code>ZonedDateTime</code></td><td>带时区的日期时间</td><td>2024-03-15T14:30:00+08:00[Asia/Shanghai]</td></tr>
+        <tr><td><code>Instant</code></td><td>时间戳（UTC 时间线上的一个点）</td><td>2024-03-15T06:30:00Z</td></tr>
+        <tr><td><code>Duration</code></td><td>时间间隔（时分秒纳秒）</td><td>PT2H30M（2小时30分钟）</td></tr>
+        <tr><td><code>Period</code></td><td>日期间隔（年月日）</td><td>P1Y2M3D（1年2个月3天）</td></tr>
+        <tr><td><code>DateTimeFormatter</code></td><td>格式化器（线程安全！）</td><td>yyyy-MM-dd HH:mm:ss</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>8.2 常用操作</h3>
+  <pre><span class="co">// ===== 创建 =====</span>
+LocalDate today = LocalDate.<span class="fn">now</span>();
+LocalDate date  = LocalDate.<span class="fn">of</span>(<span class="nu">2024</span>, <span class="nu">3</span>, <span class="nu">15</span>);    <span class="co">// 不是 new ! 月份是 3 不是 2 !</span>
+LocalDateTime dt = LocalDateTime.<span class="fn">of</span>(<span class="nu">2024</span>, <span class="nu">3</span>, <span class="nu">15</span>, <span class="nu">14</span>, <span class="nu">30</span>);
+
+<span class="co">// ===== 修改（所有方法返回新对象，原对象不变 —— 不可变，线程安全）=====</span>
+LocalDate tomorrow = today.<span class="fn">plusDays</span>(<span class="nu">1</span>);
+LocalDate lastMonth = today.<span class="fn">minusMonths</span>(<span class="nu">1</span>);
+LocalDate firstDay  = today.<span class="fn">withDayOfMonth</span>(<span class="nu">1</span>);
+LocalDate adjusted  = today.<span class="fn">with</span>(TemporalAdjusters.lastDayOfMonth());
+
+<span class="co">// ===== 计算差距 =====</span>
+<span class="tp">long</span> days = ChronoUnit.DAYS.<span class="fn">between</span>(date1, date2);
+Period period = Period.<span class="fn">between</span>(date1, date2);
+<span class="co">// period.getYears(), getMonths(), getDays()</span>
+
+Duration duration = Duration.<span class="fn">between</span>(time1, time2);
+<span class="co">// duration.toHours(), toMinutes(), getSeconds()</span>
+
+<span class="co">// ===== 时间戳（Instant）=====</span>
+Instant now = Instant.<span class="fn">now</span>();
+<span class="tp">long</span> millis = now.<span class="fn">toEpochMilli</span>();     <span class="co">// 毫秒时间戳</span>
+<span class="tp">long</span> seconds = now.<span class="fn">getEpochSecond</span>();    <span class="co">// 秒时间戳</span>
+
+<span class="co">// ===== 格式化 =====</span>
+DateTimeFormatter formatter = DateTimeFormatter.<span class="fn">ofPattern</span>(<span class="st">"yyyy-MM-dd HH:mm:ss"</span>);
+String str = dt.<span class="fn">format</span>(formatter);
+LocalDateTime parsed = LocalDateTime.<span class="fn">parse</span>(<span class="st">"2024-03-15 14:30:00"</span>, formatter);</pre>
+
+  <h3>8.3 新旧 API 转换</h3>
+  <pre><span class="co">// Date ↔ Instant ↔ LocalDateTime</span>
+
+<span class="co">// Date → LocalDateTime</span>
+LocalDateTime dt = <span class="kw">new</span> Date().toInstant()
+    .<span class="fn">atZone</span>(ZoneId.systemDefault())
+    .<span class="fn">toLocalDateTime</span>();
+
+<span class="co">// LocalDateTime → Date</span>
+Date date = Date.<span class="fn">from</span>(LocalDateTime.now()
+    .<span class="fn">atZone</span>(ZoneId.systemDefault())
+    .<span class="fn">toInstant</span>());</pre>
+
+  <h3>8.4 SimpleDateFormat vs DateTimeFormatter</h3>
+  <div class="compare-grid">
+    <div class="compare-card bad">
+      <h4>SimpleDateFormat</h4>
+      <p>❌ <strong>线程不安全</strong>（多线程共享一个实例会出诡异错误）<br>❌ 可变对象（setXxx 方法修改内部状态）<br>❌ 异常设计糟糕</p>
+    </div>
+    <div class="compare-card good">
+      <h4>DateTimeFormatter</h4>
+      <p>✅ <strong>线程安全</strong>（不可变对象）<br>✅ 支持更丰富的格式<br>✅ 解析更严格、错误信息更好</p>
+    </div>
+  </div>
+
+  <div class="callout warn">
+    <strong>不要再用 <code>new Date()</code> 了！</strong>日常开发全部用 java.time 包。只有和老框架（MyBatis 旧版等）交互时做转换。
+  </div>
+
+  <!-- ==================== 九、CompletableFuture ==================== -->
+  <h2 id="s9">九、CompletableFuture</h2>
+  <p>CompletableFuture 是 JDK 8 引入的<strong>异步编程利器</strong>，比传统的 Future 多了链式调用、组合编排、异常处理能力。</p>
+
+  <p style="font-size:14px;color:var(--text-dim);">详见《Java并发编程从原理到实战》第九章的完整讲解。这里补充两个常用模式：</p>
+
+  <pre><span class="co">// ===== 异步链式调用 =====</span>
+CompletableFuture
+    .<span class="fn">supplyAsync</span>(() -> <span class="fn">fetchUser</span>(userId))           <span class="co">// ① 异步获取用户</span>
+    .<span class="fn">thenApply</span>(user -> <span class="fn">enrichUser</span>(user))              <span class="co">// ② 转换为富用户对象</span>
+    .<span class="fn">thenAccept</span>(user -> <span class="fn">saveToCache</span>(user))              <span class="co">// ③ 写入缓存（不需要返回值）</span>
+    .<span class="fn">exceptionally</span>(ex -> {                             <span class="co">// ④ 异常兜底</span>
+        log.error(<span class="st">"failed"</span>, ex);
+        <span class="kw">return</span> <span class="kw">null</span>;
+    });
+
+<span class="co">// ===== 并行调用 + 结果聚合 =====</span>
+CompletableFuture&lt;UserInfo&gt; userF  = CompletableFuture.<span class="fn">supplyAsync</span>(() -> <span class="fn">queryUser</span>(id));
+CompletableFuture&lt;List&lt;Order&gt;&gt; orderF = CompletableFuture.<span class="fn">supplyAsync</span>(() -> <span class="fn">queryOrders</span>(id));
+
+userF.<span class="fn">thenCombine</span>(orderF, (user, orders) -> {       <span class="co">// 合并两个结果</span>
+    user.<span class="fn">setOrders</span>(orders);
+    <span class="kw">return</span> user;
+}).<span class="fn">get</span>(<span class="nu">3000</span>, TimeUnit.MILLISECONDS);                  <span class="co">// 超时控制</span></pre>
+
+  <!-- ==================== 十、其他特性 ==================== -->
+  <h2 id="s10">十、其他重要特性</h2>
+
+  <h3>10.1 Base64 编解码</h3>
+  <pre><span class="co">// JDK 8 之前要用第三方库（如 Apache Commons Codec），现在内置了</span>
+String encoded = Base64.<span class="fn">getEncoder</span>().<span class="fn">encodeToString</span>(<span class="st">"hello"</span>.getBytes());
+<span class="tp">byte</span>[] decoded = Base64.<span class="fn">getDecoder</span>().<span class="fn">decode</span>(encoded);
+
+<span class="co">// URL 安全</span>
+String urlEncoded = Base64.<span class="fn">getUrlEncoder</span>().<span class="fn">encodeToString</span>(data);
+
+<span class="co">// MIME</span>
+String mimeEncoded = Base64.<span class="fn">getMimeEncoder</span>().<span class="fn">encodeToString</span>(data);</pre>
+
+  <h3>10.2 重复注解与类型注解</h3>
+  <pre><span class="co">// 重复注解：同一个地方可以写多次同一个注解</span>
+@Schedule(dayOfMonth=<span class="st">"last"</span>)
+@Schedule(dayOfWeek=<span class="st">"Fri"</span>)
+<span class="kw">public</span> <span class="tp">void</span> <span class="fn">doTask</span>() {}
+
+<span class="co">// 类型注解：注解可以用在泛型上</span>
+List&lt;@NonNull String&gt; list;</pre>
+
+  <h3>10.3 Parallel Array Sorting（并行排序）</h3>
+  <pre><span class="co">// 大数组用并行排序更快</span>
+Arrays.<span class="fn">parallelSort</span>(largeArray);</pre>
+
+  <h3>10.4 Nashorn JavaScript 引擎（JDK 8-14，15 移除）</h3>
+  <pre><span class="co">// JDK 8 可以执行 JavaScript</span>
+ScriptEngine engine = <span class="kw">new</span> ScriptEngineManager().<span class="fn">getEngineByName</span>(<span class="st">"nashorn"</span>);
+engine.<span class="fn">eval</span>(<span class="st">"print('Hello from JS')"</span>);</pre>
+
+  <h3>10.5 StampedLock —— 读写锁的升级版</h3>
+  <pre><span class="co">// 比 ReentrantReadWriteLock 性能更好（乐观读模式）</span>
+StampedLock lock = <span class="kw">new</span> StampedLock();
+
+<span class="tp">long</span> stamp = lock.<span class="fn">tryOptimisticRead</span>();  <span class="co">// 乐观读，不阻塞写</span>
+<span class="co">// ... 读取数据 ...</span>
+<span class="kw">if</span> (!lock.<span class="fn">validate</span>(stamp)) {           <span class="co">// 检查读期间有没有写</span>
+    stamp = lock.<span class="fn">readLock</span>();              <span class="co">// 有写 → 升级为悲观读</span>
+    <span class="kw">try</span> { <span class="co">/* 重新读 */</span> } <span class="kw">finally</span> { lock.<span class="fn">unlockRead</span>(stamp); }
+}</pre>
+
+  <!-- ==================== 十一、面试速记 ==================== -->
+  <h2 id="s11">十一、面试速记</h2>
+  <div class="qa-grid">
+    <div class="qa-card">
+      <div class="q">Lambda 表达式的本质是什么？和匿名内部类有什么区别？</div>
+      <div class="a">Lambda 是函数式接口的实例，编译后不会生成单独的 .class 文件（用 invokedynamic 实现），比匿名内部类更轻量。Lambda 中的 this 指向外层类，匿名内部类的 this 指向内部类自身。</div>
+    </div>
+    <div class="qa-card">
+      <div class="q">map 和 flatMap 的区别？</div>
+      <div class="a">map 是一对一映射：Stream&lt;T&gt; → Stream&lt;R&gt;。flatMap 是一对多映射 + 扁平化：Stream&lt;T&gt; → Stream&lt;R&gt;，多个子流合并成一个大流。典型场景：拆分字符串、展开嵌套集合。</div>
+    </div>
+    <div class="qa-card">
+      <div class="q">Stream 的中间操作和终端操作有什么区别？</div>
+      <div class="a">中间操作（filter、map、sorted...）惰性求值，返回 Stream 可链式调用，不触发计算。终端操作（collect、forEach、reduce...）触发计算，执行后流关闭。</div>
+    </div>
+    <div class="qa-card">
+      <div class="q">orElse 和 orElseGet 的区别？</div>
+      <div class="a">orElse 的参数无论 Optional 是否有值都会执行；orElseGet 的 Supplier 只在无值时才执行。如果默认值构造有副作用或开销大，必须用 orElseGet。</div>
+    </div>
+    <div class="qa-card">
+      <div class="q">Java 8 的日期 API 比旧 Date/Calendar 好在哪？</div>
+      <div class="a">不可变（线程安全）、API 设计清晰（Date=年月日，Time=时分秒，分开）、月份从 1 开始、DateTimeFormatter 线程安全、支持时区操作更友好。</div>
+    </div>
+    <div class="qa-card">
+      <div class="q">函数式接口是什么？常见的有哪几个？</div>
+      <div class="a">只有一个抽象方法的接口，用 @FunctionalInterface 标记。四大核心：Supplier（供给）、Consumer（消费）、Function（转换）、Predicate（断言）。</div>
+    </div>
+    <div class="qa-card">
+      <div class="q">接口的 default 方法是什么？为什么要有？</div>
+      <div class="a">default 方法让接口有方法体实现，子类可选覆盖。核心动机：给 Collection 接口加 stream()，如果加抽象方法所有实现类都得改。default 向后兼容。类的方法优先级 > 接口 default。</div>
+    </div>
+    <div class="qa-card">
+      <div class="q">Stream 的 reduce 怎么用？</div>
+      <div class="a">reduce(初始值, (累加结果, 当前元素) -> 新累加结果)。例如：stream.reduce(0, (a,b) -> a+b)。无初始值返回 Optional。特殊场景有 sum()/max()/min() 等 shortcut。</div>
+    </div>
+    <div class="qa-card">
+      <div class="q">Collectors.groupingBy 怎么用？</div>
+      <div class="a">groupingBy(分类函数, 下游收集器)。一层分组返回 Map&lt;K, List&lt;T&gt;&gt;，多层嵌套可实现 Map&lt;K, Map&lt;K2, List&lt;T&gt;&gt;&gt;。下游收集器可做 counting()、summing()、averaging() 等聚合操作。</div>
+    </div>
+    <div class="qa-card">
+      <div class="q">Lambda 里为什么只能引用"有效 final"的局部变量？</div>
+      <div class="a">Lambda 本质是匿名内部类语法糖，局部变量被拷贝到 Lambda 实例中。如果允许修改原变量，拷贝值就不一致了。实例字段和静态字段不受此限制（因为它们通过引用访问）。</div>
+    </div>
+  </div>
+
+  <div class="doc-footer">
+    <p><strong>推荐阅读</strong></p>
+    <p>
+      《Java 8 实战》—— Urma / Fusco / Mycroft · Lambda &amp; Stream 圣经<br>
+      《Java 8 函数式编程》—— Warburton<br>
+      <a href="https://docs.oracle.com/javase/8/docs/api/java/util/stream/package-summary.html" style="color:var(--primary);">Stream 官方文档</a>
+    </p>
+  </div>
+
+</div>
+</body>
+</html>

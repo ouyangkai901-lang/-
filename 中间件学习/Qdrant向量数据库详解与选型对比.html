@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Qdrant 向量数据库详解 · 选型对比</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap');
+  *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+  :root{--bg:#faf8f5;--surface:#ffffff;--surface2:#f5f0ea;--border:#e3dbd0;--text:#3d3929;--text-dim:#8c8980;--text-bright:#1e1b18;--primary:#2563eb;--green:#2d8a4e;--orange:#b45309;--purple:#7c3aed;--red:#dc2626;--cyan:#0d9488}
+  body{font-family:'Noto Sans SC',sans-serif;background:var(--bg);color:var(--text);line-height:1.85}
+  .container{max-width:1000px;margin:0 auto;padding:40px 24px 80px}
+  .toc{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px 28px;margin:0 0 40px}
+  .toc h3{font-size:16px;color:var(--text-bright);margin-bottom:14px}
+  .toc ol{columns:2;column-gap:24px;padding-left:20px;font-size:13px;line-height:2.2}
+  .toc ol li a{color:var(--primary);text-decoration:none}
+  .toc ol li a:hover{text-decoration:underline}
+  .doc-header{text-align:center;padding:60px 0 50px;position:relative}
+  .doc-header::after{content:'';position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:100px;height:3px;background:linear-gradient(90deg,transparent,var(--primary),transparent);border-radius:2px}
+  .doc-header h1{font-size:34px;font-weight:900;color:var(--text-bright)}
+  .doc-header .ref{font-size:14px;color:var(--text-dim);margin-top:6px}
+  h2{font-size:22px;font-weight:700;color:var(--text-bright);margin:48px 0 18px;padding-bottom:10px;border-bottom:2px solid var(--border)}
+  h3{font-size:18px;font-weight:600;color:var(--text-bright);margin:28px 0 12px}
+  p{margin-bottom:12px;font-size:14px}
+  p strong{color:var(--text-bright)}
+  code{font-family:'JetBrains Mono',monospace;background:var(--surface2);padding:2px 6px;border-radius:4px;font-size:13px;color:var(--red)}
+  pre{background:#1e1b18;color:#e8e4dc;padding:16px 20px;border-radius:10px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.7;margin:12px 0}
+  pre .co{color:#546e7a}pre .kw{color:#c792ea}pre .tp{color:#ffcb6b}pre .fn{color:#82aaff}pre .st{color:#c3e88d}pre .nu{color:#f78c6c}
+  .table-wrap{overflow-x:auto;margin:12px 0 20px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  thead th{background:var(--surface2);padding:10px 14px;border:1px solid var(--border);text-align:left;font-weight:600;color:var(--text-bright)}
+  tbody td{padding:9px 14px;border:1px solid var(--border);vertical-align:top}
+  tbody tr:nth-child(even){background:rgba(0,0,0,0.012)}
+  .callout{background:rgba(37,99,235,0.06);border-left:4px solid var(--primary);padding:12px 16px;border-radius:0 8px 8px 0;margin:12px 0;font-size:13px}
+  .callout.warn{background:rgba(220,38,38,0.06);border-left-color:var(--red)}
+  .callout.tip{background:rgba(45,138,78,0.06);border-left-color:var(--green)}
+  .diagram{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin:12px 0;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.8;white-space:pre;text-align:center}
+  .diagram.label{text-align:left}
+  .compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0}
+  .compare-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px}
+  .compare-card h4{margin:0 0 8px;font-size:15px}
+  .compare-card.good{border-left:3px solid var(--green)}
+  .compare-card.bad{border-left:3px solid var(--red)}
+  .qa-grid{display:grid;grid-template-columns:1fr;gap:8px;margin:12px 0}
+  .qa-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px}
+  .qa-card .q{font-weight:700;color:var(--text-bright);font-size:14px;margin-bottom:3px}
+  .qa-card .a{font-size:13px;color:var(--text-dim)}
+  .doc-footer{margin-top:50px;padding:24px 0;border-top:1px solid var(--border);color:var(--text-dim);font-size:13px}
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="doc-header">
+  <h1>Qdrant 向量数据库详解 · 选型对比</h1>
+  <p class="ref">Qdrant vs Milvus vs Pinecone vs Weaviate vs pgvector —— 向量数据库选型决策指南</p>
+</div>
+
+<div class="toc">
+  <h3>📑 目录</h3>
+  <ol>
+    <li><a href="#s1">为什么需要向量数据库？</a></li>
+    <li><a href="#s2">Embedding —— 把文本/图片变成向量</a></li>
+    <li><a href="#s3">向量相似度检索原理</a></li>
+    <li><a href="#s4">Qdrant 核心架构</a></li>
+    <li><a href="#s5">Qdrant vs Milvus</a></li>
+    <li><a href="#s6">Qdrant vs Pinecone vs Weaviate</a></li>
+    <li><a href="#s7">向量数据库 vs 传统数据库+向量扩展</a></li>
+    <li><a href="#s8">选型决策树</a></li>
+    <li><a href="#s9">Qdrant 核心操作</a></li>
+    <li><a href="#s10">面试速记</a></li>
+  </ol>
+</div>
+
+<h2 id="s1">一、为什么需要向量数据库？</h2>
+
+<p>传统搜索（ES / MySQL）解决的是<strong>精确匹配</strong>和<strong>关键词匹配</strong>的问题。但在智能客服场景中，用户问：</p>
+<pre>用户输入："<span class="st">我的快递怎么还没到？</span>"
+FAQ 库里有："<span class="st">物流超时如何查询？</span>"
+
+关键词匹配：0 个共同词 → 搜不到 ❌
+语义匹配：  两句话意思一样 → 应该匹配 ✅</pre>
+
+<p>向量数据库就是用来做<strong>语义搜索</strong>的：把文本转成向量，通过计算向量之间的"距离"，找到语义最相似的内容。</p>
+
+<div class="diagram label">
+<strong>向量数据库在智能客服中的位置：</strong>
+
+  用户问题："我的快递怎么还没到？"
+     │
+     ▼
+  Embedding 模型 (text-embedding / BGE 等)
+     │
+     ▼
+  [0.023, -0.415, 0.891, ...]  ← 768 维向量
+     │
+     ▼
+  Qdrant 向量检索 → 找最相似的 Top-K 个 FAQ
+     │
+     ▼
+  返回: "物流超时如何查询？"(相似度 0.95)
+        "订单物流进度怎么查？"(相似度 0.87)
+        "包裹丢失怎么办？"(相似度 0.72)
+</div>
+
+<h2 id="s2">二、Embedding —— 把文本/图片变成向量</h2>
+<p>Embedding 是整个 RAG（检索增强生成）流程的<strong>第一步</strong>。简单说，就是用一个训练好的模型，把一段文本映射成一个固定长度的浮点数数组（向量）。</p>
+
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>模型</th><th>维度</th><th>中文效果</th><th>适用场景</th></tr></thead>
+    <tbody>
+      <tr><td>OpenAI text-embedding-ada-002</td><td>1536</td><td>一般</td><td>通用（需调 API）</td></tr>
+      <tr><td>OpenAI text-embedding-3-large</td><td>3072</td><td>较好</td><td>通用（需调 API）</td></tr>
+      <tr><td style="color:var(--green);"><strong>BGE-large-zh</strong></td><td>1024</td><td style="color:var(--green);"><strong>优秀</strong></td><td>中文语义检索首选</td></tr>
+      <tr><td style="color:var(--green);"><strong>m3e-base</strong></td><td>768</td><td style="color:var(--green);"><strong>优秀</strong></td><td>中文开源（轻量）</td></tr>
+      <tr><td>text2vec-large-chinese</td><td>1024</td><td>良好</td><td>中文</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<pre><span class="co">// 用 Spring AI 或 LangChain4j 调用 Embedding 模型</span>
+<span class="co">// 伪代码：</span>
+String userQuestion = <span class="st">"我的快递怎么还没到？"</span>;
+<span class="tp">float</span>[] vector = embeddingModel.<span class="fn">embed</span>(userQuestion);  <span class="co">// → float[768]</span>
+
+<span class="co">// 在 Qdrant 中搜索最相似的 5 条 FAQ</span>
+List&lt;ScoredPoint&gt; results = qdrantClient.<span class="fn">search</span>(
+    <span class="kw">new</span> SearchRequest()
+        .<span class="fn">setCollectionName</span>(<span class="st">"faq"</span>)
+        .<span class="fn">setQueryVector</span>(vector)
+        .<span class="fn">setLimit</span>(<span class="nu">5</span>)
+);</pre>
+
+<h2 id="s3">三、向量相似度检索原理</h2>
+<p>两个向量之间怎么算"相似"？有三种常见的距离度量方式：</p>
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>度量方式</th><th>公式</th><th>特点</th><th>Qdrant 默认</th></tr></thead>
+    <tbody>
+      <tr><td><strong>余弦相似度 Cosine</strong></td><td>cos = (A·B)/(|A|*|B|)</td><td>关注方向，不关注长度。值越大越相似</td><td>推荐</td></tr>
+      <tr><td><strong>欧氏距离 Euclidean</strong></td><td>√Σ(Ai-Bi)²</td><td>关注绝对距离。值越小越相似</td><td>—</td></tr>
+      <tr><td><strong>点积 Dot Product</strong></td><td>A·B</td><td>适合归一化后的向量</td><td>—</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="callout">
+  <strong>现实中：</strong>向量数据库不会做"全量扫描计算相似度"（太慢），而是用 <strong>ANN（近似最近邻）算法</strong>，比如 HNSW（Hierarchical Navigable Small World）图算法，在<strong>毫秒级</strong>从百万向量中找到最相似的 Top-K。
+</div>
+
+<h2 id="s4">四、Qdrant 核心架构</h2>
+<div class="diagram label">
+<strong>Qdrant 架构：</strong>
+
+  ┌────────────┐
+  │  REST API  │  ← gRPC / HTTP
+  │  (Rust)    │
+  └─────┬──────┘
+        │
+  ┌─────┴──────┐
+  │ Collection │  ← 类似数据库的 Table
+  │ ├── config │     向量维度、距离度量方式
+  │ └── points │     每个 point = 向量 + payload(元数据)
+  └─────┬──────┘
+        │
+  ┌─────┴──────┐
+  │  Segments  │  ← 数据分段存储
+  │ ├── 不可变 Segment (存盘)
+  │ └── 可变 Segment (内存, 定期刷盘)
+  └─────┬──────┘
+        │
+  ┌─────┴──────┐
+  │  HNSW 索引 │  ← 导航小世界图，快速近似搜索
+  └────────────┘
+
+  <strong>核心特点：</strong>
+  • Rust 编写，单机性能极强
+  • 支持 <strong>Payload 过滤</strong>（向量搜索 + 结构化条件过滤同时做）
+  • 支持稠密向量(Dense) + 稀疏向量(Sparse) 混合搜索
+  • 内置量化（Scalar/Product Quantization）减少内存占用
+</div>
+
+<h2 id="s5">五、Qdrant vs Milvus</h2>
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>维度</th><th>Qdrant</th><th>Milvus</th></tr></thead>
+    <tbody>
+      <tr><td>语言</td><td style="color:var(--green);"><strong>Rust</strong>（性能好、内存安全）</td><td>Go（部分 C++）</td></tr>
+      <tr><td>部署</td><td style="color:var(--green);"><strong>单二进制，docker run 即用</strong></td><td>依赖 Etcd + MinIO + Pulsar，组件多</td></tr>
+      <tr><td>单机性能</td><td style="color:var(--green);"><strong>极强（Rust 零成本抽象）</strong></td><td>强</td></tr>
+      <tr><td>分布式</td><td>支持（企业版或手动分片）</td><td style="color:var(--green);"><strong>原生分布式，水平扩展强</strong></td></tr>
+      <tr><td>十亿级数据</td><td>需分布式部署</td><td style="color:var(--green);"><strong>更成熟</strong></td></tr>
+      <tr><td>SDK 语言</td><td>Python/Rust/Go/Java</td><td style="color:var(--green);"><strong>Python/Java/Go/Node/C++</strong></td></tr>
+      <tr><td>混合搜索</td><td style="color:var(--green);"><strong>支持（Dense + Sparse）</strong></td><td>支持（多元向量）</td></tr>
+      <tr><td>Payload 过滤</td><td style="color:var(--green);"><strong>强大灵活</strong></td><td>支持 Scalar Filtering</td></tr>
+      <tr><td>社区</td><td>快速成长</td><td style="color:var(--green);"><strong>更大、更成熟（CNCF 孵化）</strong></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="callout">
+  <strong>Qdrant 最突出的优势：</strong>部署极简 + Rust 性能 + Payload 过滤。中小团队/智能客服场景（百万～千万级向量），Qdrant 的部署成本和性能表现远优于 Milvus。如果数据量到<strong>亿级以上</strong>，Milvus 的分布式能力更成熟。
+</div>
+
+<h2 id="s6">六、Qdrant vs Pinecone vs Weaviate</h2>
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>维度</th><th>Qdrant</th><th>Pinecone</th><th>Weaviate</th></tr></thead>
+    <tbody>
+      <tr><td>类型</td><td style="color:var(--green);"><strong>开源，可私有部署</strong></td><td>SaaS（不开源）</td><td>开源，可私有部署</td></tr>
+      <tr><td>成本</td><td style="color:var(--green);"><strong>免费</strong></td><td style="color:var(--red);">贵（按 Pod 收费）</td><td style="color:var(--green);"><strong>免费</strong></td></tr>
+      <tr><td>数据隐私</td><td style="color:var(--green);"><strong>数据不离开公司</strong></td><td style="color:var(--red);">数据上美国云</td><td style="color:var(--green);"><strong>数据不离开公司</strong></td></tr>
+      <tr><td>部署复杂度</td><td style="color:var(--green);"><strong>极低</strong></td><td>不需要部署</td><td>中等</td></tr>
+      <tr><td>易用性</td><td>API 简洁</td><td style="color:var(--green);"><strong>最易用（全托管）</strong></td><td>GraphQL API</td></tr>
+      <tr><td>性能</td><td style="color:var(--green);"><strong>极强（Rust）</strong></td><td>强</td><td>强</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="callout tip">
+  <strong>Pinecone 最易用但是贵 + 数据出国</strong>，不适合国内企业或对数据隐私有要求的场景。Qdrant 和 Weaviate 适合私有化部署，其中 Qdrant 更轻量。
+</div>
+
+<h2 id="s7">七、向量数据库 vs 传统数据库 + 向量扩展</h2>
+<p>很多传统数据库也开始支持向量检索了：PostgreSQL 的 <code>pgvector</code>、Elasticsearch 的 <code>dense_vector</code>、Redis 的 <code>RediSearch</code>。那到底要不要单独引入向量数据库？</p>
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>方案</th><th>优点</th><th>缺点</th><th>适用</th></tr></thead>
+    <tbody>
+      <tr><td style="color:var(--green);"><strong>pgvector (PostgreSQL)</strong></td><td>不需要新组件，事务一致</td><td>百万级向量后性能下降明显</td><td>小规模、需要强一致性</td></tr>
+      <tr><td>ES dense_vector</td><td>关键词+向量混合搜索</td><td>向量性能不如专用数据库</td><td>已有 ES 且数据不大</td></tr>
+      <tr><td style="color:var(--green);"><strong>专用向量数据库 (Qdrant/Milvus)</strong></td><td>性能最强、功能最全</td><td>多一个组件要维护</td><td>核心语义搜索场景</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="callout warn">
+  <strong>选择建议：</strong>如果你们的智能客服是核心业务、FAQ 数量十万级以上 → 专用向量数据库（Qdrant）。如果只是一个小功能、几千条 FAQ → pgvector 就够用，别为了用而用。
+</div>
+
+<h2 id="s8">八、选型决策树</h2>
+<div class="diagram label">
+<strong>向量数据库选型：</strong>
+
+  你的场景？
+  ├── 数据量小（&lt;10万条），已有 PostgreSQL → <strong>pgvector</strong>
+  ├── 快速验证，不想维护服务 → <strong>Pinecone</strong>（贵，数据出国）
+  ├── 私有化部署，百万～千万级 → <strong>Qdrant</strong>（部署简单，性能好）
+  ├── 私有化部署，亿级以上 → <strong>Milvus</strong>（分布式成熟）
+  ├── 需要 GraphQL / 内置 AI 模块 → <strong>Weaviate</strong>
+  └── 智能客服场景（你们的场景）→ <strong>Qdrant</strong> 最合适
+      └── 理由：部署简单(docker run)、Rust 性能强、
+              支持 Payload 过滤（按分类/状态过滤 FAQ）
+</div>
+
+<h2 id="s9">九、Qdrant 核心操作</h2>
+<pre><span class="co"># ===== 创建 Collection =====</span>
+PUT /collections/faq
+{
+  <span class="st">"vectors"</span>: {
+    <span class="st">"size"</span>: <span class="nu">768</span>,
+    <span class="st">"distance"</span>: <span class="st">"Cosine"</span>
+  }
+}
+
+<span class="co"># ===== 插入向量点（带 Payload）=====</span>
+PUT /collections/faq/points
+{
+  <span class="st">"points"</span>: [
+    {
+      <span class="st">"id"</span>: <span class="nu">1</span>,
+      <span class="st">"vector"</span>: [<span class="nu">0.023</span>, <span class="nu">-0.415</span>, ...],   <span class="co">// 768 维向量</span>
+      <span class="st">"payload"</span>: {
+        <span class="st">"question"</span>: <span class="st">"物流超时如何查询？"</span>,
+        <span class="st">"answer"</span>: <span class="st">"请打开APP→我的→帮助中心→物流查询，输入运单号即可查询。"</span>,
+        <span class="st">"category"</span>: <span class="st">"物流"</span>,
+        <span class="st">"priority"</span>: <span class="nu">1</span>
+      }
+    }
+  ]
+}
+
+<span class="co"># ===== 向量相似度搜索（不带过滤）=====</span>
+POST /collections/faq/points/search
+{
+  <span class="st">"vector"</span>: [<span class="nu">0.031</span>, <span class="nu">-0.389</span>, ...],
+  <span class="st">"limit"</span>: <span class="nu">5</span>,
+  <span class="st">"with_payload"</span>: <span class="kw">true</span>
+}
+
+<span class="co"># ===== 向量搜索 + Payload 过滤 =====</span>
+POST /collections/faq/points/search
+{
+  <span class="st">"vector"</span>: [...],
+  <span class="st">"limit"</span>: <span class="nu">5</span>,
+  <span class="st">"filter"</span>: {
+    <span class="st">"must"</span>: [
+      { <span class="st">"key"</span>: <span class="st">"category"</span>, <span class="st">"match"</span>: { <span class="st">"value"</span>: <span class="st">"物流"</span> } }
+    ]
+  }
+}</pre>
+
+<h3>Java 客户端操作</h3>
+<pre><span class="co">// Maven 依赖：io.qdrant:client:1.7+</span>
+QdrantClient client = <span class="kw">new</span> QdrantClient(
+    QdrantGrpcClient.newBuilder(<span class="st">"localhost"</span>, <span class="nu">6334</span>, <span class="kw">false</span>).build());
+
+<span class="co">// 搜索</span>
+List&lt;ScoredPoint&gt; results = client.<span class="fn">searchAsync</span>(
+    SearchPoints.newBuilder()
+        .<span class="fn">setCollectionName</span>(<span class="st">"faq"</span>)
+        .<span class="fn">addAllVector</span>(queryVector)
+        .<span class="fn">setLimit</span>(<span class="nu">5</span>)
+        .<span class="fn">setWithPayload</span>(WithPayloadSelectorFactory.<span class="fn">enable</span>(<span class="kw">true</span>))
+        .build()
+).<span class="fn">get</span>();
+
+<span class="co">// results 中包含每个结果的 id、score、payload</span>
+<span class="kw">for</span> (ScoredPoint point : results) {
+    System.out.<span class="fn">println</span>(<span class="st">"score: "</span> + point.<span class="fn">getScore</span>());
+    System.out.<span class="fn">println</span>(<span class="st">"answer: "</span> + point.<span class="fn">getPayload</span>().<span class="fn">get</span>(<span class="st">"answer"</span>));
+}</pre>
+
+<h3>Spring AI 集成（更简单）</h3>
+<pre><span class="co">// application.yml:</span>
+<span class="co">// spring.ai.qdrant.host=localhost</span>
+<span class="co">// spring.ai.qdrant.port=6334</span>
+<span class="co">// spring.ai.qdrant.collection-name=faq</span>
+
+@Autowired
+<span class="kw">private</span> VectorStore qdrantVectorStore;
+
+<span class="kw">public</span> List&lt;Document&gt; <span class="fn">searchSimilarFAQ</span>(String userQuestion) {
+    <span class="kw">return</span> qdrantVectorStore.<span class="fn">similaritySearch</span>(
+        SearchRequest.<span class="fn">query</span>(userQuestion).<span class="fn">withTopK</span>(<span class="nu">5</span>)
+    );
+}</pre>
+
+<h2 id="s10">十、面试速记</h2>
+<div class="qa-grid">
+  <div class="qa-card"><div class="q">什么是向量数据库？和传统数据库有什么区别？</div><div class="a">传统数据库做精确匹配（"年龄=25"），向量数据库做语义相似度匹配（"意思相近"）。核心：用 Embedding 模型将文本转成向量 → 用 ANN 算法（HNSW）快速找最相似的向量。解决的是"理解语义"而非"匹配关键词"的问题。</div></div>
+  <div class="qa-card"><div class="q">Qdrant 和 Milvus 怎么选？</div><div class="a">百万～千万级 + 想要部署简单 → Qdrant（单二进制、Rust 性能强、Payload 过滤灵活）。亿级以上 + 需要强大分布式 → Milvus（CNCF 孵化、分布式成熟、但部署组件多）。</div></div>
+  <div class="qa-card"><div class="q">Embedding 模型怎么选？</div><div class="a">中文语义检索首选 BGE-large-zh（1024维）或 m3e-base（768维，轻量）。追求效果用 OpenAI text-embedding-3-large（但需 API、数据出国）。维度越高效果越好但存储和检索成本也越高。</div></div>
+  <div class="qa-card"><div class="q">HNSW 算法是什么？</div><div class="a">分层可导航小世界图。构建多层图结构，上层稀疏（长距离跳跃）、下层稠密（精确搜索）。检索时从顶层快速接近目标区域，逐层下降。时间复杂度 O(log N)，百万级向量毫秒级检索。</div></div>
+  <div class="qa-card"><div class="q">什么时候用 pgvector 就够了，不需要专门的向量数据库？</div><div class="a">数据量小（&lt;10万）、已有 PostgreSQL、向量搜索是辅助功能而非核心。反之，向量搜索是核心功能、数据量大（十万+）、要求低延迟 → 专用向量数据库。</div></div>
+</div>
+
+<div class="doc-footer"><p><strong>推荐阅读</strong>：<a href="https://qdrant.tech/documentation/" style="color:var(--primary);">Qdrant 官方文档</a> · <a href="https://milvus.io/docs" style="color:var(--primary);">Milvus 文档</a> · <a href="https://huggingface.co/BAAI/bge-large-zh" style="color:var(--primary);">BGE 模型</a></p></div>
+</div>
+</body>
+</html>

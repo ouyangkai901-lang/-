@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HBase 详解 · LSM-Tree 与选型对比</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap');
+  *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+  :root{--bg:#faf8f5;--surface:#ffffff;--surface2:#f5f0ea;--border:#e3dbd0;--text:#3d3929;--text-dim:#8c8980;--text-bright:#1e1b18;--primary:#2563eb;--green:#2d8a4e;--orange:#b45309;--purple:#7c3aed;--red:#dc2626;--cyan:#0d9488}
+  body{font-family:'Noto Sans SC',sans-serif;background:var(--bg);color:var(--text);line-height:1.85}
+  .container{max-width:1000px;margin:0 auto;padding:40px 24px 80px}
+  .toc{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px 28px;margin:0 0 40px}
+  .toc h3{font-size:16px;color:var(--text-bright);margin-bottom:14px}
+  .toc ol{columns:2;column-gap:24px;padding-left:20px;font-size:13px;line-height:2.2}
+  .toc ol li a{color:var(--primary);text-decoration:none}
+  .toc ol li a:hover{text-decoration:underline}
+  .doc-header{text-align:center;padding:60px 0 50px;position:relative}
+  .doc-header::after{content:'';position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:100px;height:3px;background:linear-gradient(90deg,transparent,var(--primary),transparent);border-radius:2px}
+  .doc-header h1{font-size:34px;font-weight:900;color:var(--text-bright)}
+  .doc-header .ref{font-size:14px;color:var(--text-dim);margin-top:6px}
+  h2{font-size:22px;font-weight:700;color:var(--text-bright);margin:48px 0 18px;padding-bottom:10px;border-bottom:2px solid var(--border)}
+  h3{font-size:18px;font-weight:600;color:var(--text-bright);margin:28px 0 12px}
+  p{margin-bottom:12px;font-size:14px}
+  p strong{color:var(--text-bright)}
+  code{font-family:'JetBrains Mono',monospace;background:var(--surface2);padding:2px 6px;border-radius:4px;font-size:13px;color:var(--red)}
+  pre{background:#1e1b18;color:#e8e4dc;padding:16px 20px;border-radius:10px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.7;margin:12px 0}
+  pre .co{color:#546e7a}pre .kw{color:#c792ea}pre .tp{color:#ffcb6b}pre .fn{color:#82aaff}pre .st{color:#c3e88d}pre .nu{color:#f78c6c}
+  .table-wrap{overflow-x:auto;margin:12px 0 20px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  thead th{background:var(--surface2);padding:10px 14px;border:1px solid var(--border);text-align:left;font-weight:600;color:var(--text-bright)}
+  tbody td{padding:9px 14px;border:1px solid var(--border);vertical-align:top}
+  tbody tr:nth-child(even){background:rgba(0,0,0,0.012)}
+  .callout{background:rgba(37,99,235,0.06);border-left:4px solid var(--primary);padding:12px 16px;border-radius:0 8px 8px 0;margin:12px 0;font-size:13px}
+  .callout.warn{background:rgba(220,38,38,0.06);border-left-color:var(--red)}
+  .callout.tip{background:rgba(45,138,78,0.06);border-left-color:var(--green)}
+  .diagram{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin:12px 0;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.8;white-space:pre;text-align:center}
+  .diagram.label{text-align:left}
+  .compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0}
+  .compare-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px}
+  .compare-card h4{margin:0 0 8px;font-size:15px}
+  .compare-card.good{border-left:3px solid var(--green)}
+  .compare-card.bad{border-left:3px solid var(--red)}
+  .qa-grid{display:grid;grid-template-columns:1fr;gap:8px;margin:12px 0}
+  .qa-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px}
+  .qa-card .q{font-weight:700;color:var(--text-bright);font-size:14px;margin-bottom:3px}
+  .qa-card .a{font-size:13px;color:var(--text-dim)}
+  .doc-footer{margin-top:50px;padding:24px 0;border-top:1px solid var(--border);color:var(--text-dim);font-size:13px}
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="doc-header">
+  <h1>HBase 详解 · LSM-Tree 与选型对比</h1>
+  <p class="ref">HBase vs Cassandra vs MongoDB vs MySQL 分库分表 —— 分布式 KV 存储选型决策</p>
+</div>
+
+<div class="toc">
+  <h3>📑 目录</h3>
+  <ol>
+    <li><a href="#s1">HBase 是什么？为什么需要它？</a></li>
+    <li><a href="#s2">LSM-Tree —— HBase 的核心</a></li>
+    <li><a href="#s3">HBase 核心架构</a></li>
+    <li><a href="#s4">RowKey 设计 —— 最重要的事情</a></li>
+    <li><a href="#s5">HBase vs MySQL 分库分表</a></li>
+    <li><a href="#s6">HBase vs Cassandra</a></li>
+    <li><a href="#s7">HBase vs MongoDB</a></li>
+    <li><a href="#s8">选型决策树</a></li>
+    <li><a href="#s9">HBase 基础操作</a></li>
+    <li><a href="#s10">面试速记</a></li>
+  </ol>
+</div>
+
+<h2 id="s1">一、HBase 是什么？为什么需要它？</h2>
+
+<p>HBase 是 Hadoop 生态中的<strong>分布式、面向列</strong>的 KV 数据库，底层基于 HDFS 存储。它的设计目标是处理 <strong>海量稀疏数据</strong> 的<strong>随机读写</strong>。</p>
+
+<div class="callout">
+  <strong>HBase 的核心卖点：</strong><br>
+  · <strong>十亿行 × 百万列</strong>级别的数据量<br>
+  · <strong>毫秒级随机读写</strong>（按 RowKey）<br>
+  · <strong>水平扩展</strong>：加机器就能自动均衡<br>
+  · <strong>稀疏存储</strong>：空列不占空间（列式存储的优势）<br>
+  · <strong>自动故障转移</strong>：依赖 HDFS 的多副本
+</div>
+
+<h2 id="s2">二、LSM-Tree —— HBase 的核心</h2>
+<p>HBase 快的原因和 Kafka 一样，也是<strong>顺序写</strong>。但 HBase 用的不是 Kafka 的日志追加，而是 <strong>LSM-Tree（Log-Structured Merge Tree）</strong>。</p>
+
+<div class="diagram label">
+<strong>LSM-Tree 写入流程：</strong>
+
+  写入请求
+     │
+     ▼
+  ┌─────────┐
+  │ MemStore │  ← 内存中的有序结构（跳表/SkipList）
+  │ (内存)    │     写入先写这里，极快
+  └────┬────┘
+       │ 满了（默认 128MB）→ flush 到磁盘
+       ▼
+  ┌─────────┐
+  │ StoreFile│  ← 磁盘上的 HFile，不可变的有序文件
+  │ (磁盘)    │    每个文件都是有序的
+  │ (HFile)  │
+  └────┬────┘
+       │ 小文件太多 → Compaction（合并）
+       ▼
+  ┌──────────────────────┐
+  │  Compaction           │
+  │  小文件 → 大文件       │  ← 合并过程：多路归并排序 + 删除过期数据
+  │  删除标记 → 真正删除   │
+  └──────────────────────┘
+
+  <strong>LSM-Tree 的核心思想：</strong>
+  • 写入 = 顺序写（先内存 MemStore，再磁盘 HFile）
+  • 读取 = 先查 MemStore → 再查 BlockCache → 最后查多个 HFile + 合并结果
+  • 后台 Compaction 持续合并文件、清理过期数据
+</div>
+
+<h3>B+Tree vs LSM-Tree</h3>
+<div class="compare-grid">
+  <div class="compare-card good">
+    <h4>B+Tree (MySQL InnoDB)</h4>
+    <p style="font-size:13px;"><strong>写：</strong>随机写（寻道+旋转延迟），慢<br><strong>读：</strong>直接定位到数据页，快<br><strong>空间：</strong>页分裂浪费空间<br><strong>适用：</strong>读多写少、事务场景</p>
+  </div>
+  <div class="compare-card good">
+    <h4>LSM-Tree (HBase / RocksDB)</h4>
+    <p style="font-size:13px;"><strong>写：</strong>顺序写（追加），极快<br><strong>读：</strong>需要查多个文件合并，慢<br><strong>空间：</strong>Compaction 压缩，紧凑<br><strong>适用：</strong>写多读少、海量数据</p>
+  </div>
+</div>
+
+<h2 id="s3">三、HBase 核心架构</h2>
+<div class="diagram">
+<strong>HBase 架构：</strong>
+
+  ┌──────────┐
+  │  Client  │
+  └────┬─────┘
+       │ ① 先问 ZooKeeper：meta 表在哪？
+       ▼
+  ┌──────────┐    ② 读 meta 表：我的 RowKey 在哪个 Region？
+  │ZooKeeper │ ← 集群协调者
+  └──────────┘
+       │
+       ▼
+  ┌──────────────────────────────────────────┐
+  │              HMaster                      │  ← 管理节点
+  │  (Region 分配、负载均衡、故障恢复)          │
+  └──────────────────────────────────────────┘
+       │
+       ▼
+  ┌──────────────────┐  ┌──────────────────┐
+  │ RegionServer-1   │  │ RegionServer-2   │  ← 工作节点
+  │ ┌──────┐┌──────┐ │  │ ┌──────┐┌──────┐ │
+  │ │Region││Region│ │  │ │Region││Region│ │  ← Region = 一张表的某一段 RowKey 范围
+  │ │[a,m) ││[m,z) │ │  │ │[0,5) ││[5,9) │ │
+  │ └──────┘└──────┘ │  │ └──────┘└──────┘ │
+  └──────────────────┘  └──────────────────┘
+       │                       │
+       ▼                       ▼
+  ┌──────────────────────────────────────────┐
+  │              HDFS (DataNode)              │  ← 底层存储
+  └──────────────────────────────────────────┘
+
+  <strong>Region 是 HBase 的最小分布式单元：</strong>
+  • 一张表的数据按 RowKey 范围切分成多个 Region
+  • Region 太大（默认 10GB）→ 自动分裂成两个
+  • 每个 RegionServer 管理多个 Region
+</div>
+
+<h2 id="s4">四、RowKey 设计 —— 最重要的事情</h2>
+<div class="callout warn">
+  <strong>RowKey 设计决定了 HBase 的性能和可用性。</strong>设计得不好，热点写入、查询慢、扫描效率低全会找上门。
+</div>
+
+<h3>三大原则</h3>
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>原则</th><th>说明</th><th>反例</th></tr></thead>
+    <tbody>
+      <tr><td><strong>长度不宜过长</strong></td><td>RowKey 越长，索引开销越大</td><td><code>user_behavior_event_2024_01_15_xxx</code></td></tr>
+      <tr><td><strong>散列性（避免热点）</strong></td><td>不要让所有写入都落在一个 Region 上</td><td>用时间戳做 RowKey → 所有写入打到最后一个 Region</td></tr>
+      <tr><td><strong>查询友好</strong></td><td>RowKey 按字典序排列，相近的 RowKey 存一起</td><td>完全随机 RowKey → 查询只能全表扫</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h4>RowKey 设计经典方案</h4>
+<pre><span class="co">// 场景：智能客服的对话记录表</span>
+<span class="co">// 查询需求：按用户 + 时间范围 查询历史对话</span>
+
+<span class="co">// ❌ 错误设计：直接用时间戳</span>
+RowKey = timestamp  <span class="co">// "1710316800000" → 热点写在最后一个 Region</span>
+
+<span class="co">// ❌ 错误设计：直接用 user_id</span>
+RowKey = user_id    <span class="co">// "user_123" → 如果单个用户数据太多，Region 不均衡</span>
+
+<span class="co">// ✅ 正确设计：散列前缀 + user_id + 反向时间戳</span>
+<span class="co">// 反向时间戳 = Long.MAX_VALUE - timestamp, 让新数据排前面</span>
+RowKey = MD5(user_id).substring(<span class="nu">0</span>, <span class="nu">4</span>) + <span class="st">"_"</span> + user_id + <span class="st">"_"</span> + (Long.MAX_VALUE - timestamp)
+<span class="co">// "a3f1_user_123_9223370399469951616"</span>
+
+<span class="co">// 好处：同一个用户的对话在一起（连续扫描快），新数据在前面，散列前缀防热点</span></pre>
+
+<h2 id="s5">五、HBase vs MySQL 分库分表</h2>
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>维度</th><th>HBase</th><th>MySQL 分库分表</th></tr></thead>
+    <tbody>
+      <tr><td>数据量</td><td style="color:var(--green);"><strong>百亿行级，天然支撑</strong></td><td>亿行级开始吃力，需要中间件</td></tr>
+      <tr><td>横向扩展</td><td style="color:var(--green);"><strong>加机器自动 Rebalance</strong></td><td>加机器需手动迁移数据</td></tr>
+      <tr><td>Schema 变更</td><td style="color:var(--green);"><strong>动态列，随时加列</strong></td><td>DDL 变更，大表锁表风险</td></tr>
+      <tr><td>SQL 支持</td><td>不支持 SQL（Phoenix 可提供）</td><td style="color:var(--green);"><strong>完整 SQL 支持</strong></td></tr>
+      <tr><td>事务</td><td>不支持跨行事务</td><td style="color:var(--green);"><strong>ACID 事务</strong></td></tr>
+      <tr><td>复杂查询</td><td>只支持 RowKey 查 + 范围扫</td><td style="color:var(--green);"><strong>多条件查询、JOIN、子查询</strong></td></tr>
+      <tr><td>写入性能</td><td style="color:var(--green);"><strong>顺序写，极高</strong></td><td>B+Tree 随机写，较低</td></tr>
+      <tr><td>运维复杂度</td><td>高（依赖 Hadoop/HDFS/ZK）</td><td style="color:var(--green);"><strong>相对简单（ShardingSphere/MyCat）</strong></td></tr>
+    </tbody>
+  </table>
+</div>
+<div class="callout">
+  <strong>核心区别：</strong>HBase 是"牺牲了复杂查询能力，换来海量数据的快速读写和水平扩展"。MySQL 分库分表是"在不牺牲 SQL 能力的前提下，强行水平扩展"，治标不治本。<br>
+  如果你的数据查询模式就是<strong>按 RowKey 查 + 范围扫</strong>，HBase 完美适配。如果需要复杂 SQL，要么用 Phoenix on HBase，要么用 TiDB。
+</div>
+
+<h2 id="s6">六、HBase vs Cassandra</h2>
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>维度</th><th>HBase</th><th>Cassandra</th></tr></thead>
+    <tbody>
+      <tr><td>设计理念</td><td>CP（一致性 + 分区容错）</td><td>AP（可用性 + 分区容错，最终一致）</td></tr>
+      <tr><td>存储引擎</td><td>HDFS 上的 HFile</td><td>自研存储引擎（SSTable）</td></tr>
+      <tr><td>依赖</td><td>HDFS + ZooKeeper</td><td style="color:var(--green);"><strong>无外部依赖，自包含</strong></td></tr>
+      <tr><td>一致性</td><td style="color:var(--green);"><strong>强一致性（单 Region 内）</strong></td><td>可调一致性（ONE/QUORUM/ALL）</td></tr>
+      <tr><td>可用性</td><td>RegionServer 挂了需恢复（秒级）</td><td style="color:var(--green);"><strong>无单点，任何节点可读写</strong></td></tr>
+      <tr><td>CQL</td><td>不支持</td><td style="color:var(--green);"><strong>原生 CQL（类 SQL）</strong></td></tr>
+      <tr><td>运维</td><td>重（需维护 Hadoop 生态）</td><td style="color:var(--green);"><strong>轻（无外部依赖）</strong></td></tr>
+      <tr><td>适用</td><td>已有 Hadoop 生态、需要强一致性</td><td>多数据中心、高可用优先</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2 id="s7">七、HBase vs MongoDB</h2>
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>维度</th><th>HBase</th><th>MongoDB</th></tr></thead>
+    <tbody>
+      <tr><td>数据模型</td><td>宽表（列族 + 动态列）</td><td style="color:var(--green);"><strong>JSON 文档（嵌套结构）</strong></td></tr>
+      <tr><td>查询能力</td><td>只支持 RowKey 查询</td><td style="color:var(--green);"><strong>丰富的查询语言 + 聚合管道</strong></td></tr>
+      <tr><td>写入性能</td><td style="color:var(--green);"><strong>极高</strong></td><td>高（WiredTiger 引擎）</td></tr>
+      <tr><td>单机性能</td><td>需要集群</td><td style="color:var(--green);"><strong>单机也能良好运行</strong></td></tr>
+      <tr><td>使用门槛</td><td>高</td><td style="color:var(--green);"><strong>低（JSON 直觉型）</strong></td></tr>
+      <tr><td>海量数据</td><td style="color:var(--green);"><strong>百亿行级</strong></td><td>亿级以内（超出需分片集群）</td></tr>
+      <tr><td>典型场景</td><td>时序数据、用户行为、日志存储</td><td>内容管理、用户画像、实时分析</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2 id="s8">八、选型决策树</h2>
+<div class="diagram label">
+<strong>海量数据存储选型：</strong>
+
+  你的需求是？
+  ├── 需要 SQL（JOIN、子查询、事务）→ <strong>MySQL 分库分表 / TiDB</strong>
+  ├── 数据量大(十亿+)、按 ID 查 + 范围扫 → <strong>HBase</strong>
+  │   └── 不想维护 Hadoop → <strong>Cassandra</strong> 或 <strong>ScyllaDB</strong>
+  ├── 灵活的文档模型、JSON 嵌套数据 → <strong>MongoDB</strong>
+  ├── 时序数据（监控、IoT）→ <strong>HBase / InfluxDB / TDengine</strong>
+  └── 智能客服场景中的对话存储：
+      ├── 按 user_id + 时间范围查对话历史 → <strong>HBase</strong> 最合适
+      │   └── RowKey = hash(user_id) + user_id + reverse_timestamp
+      └── 数据量不大(&lt;千万级) → <strong>MySQL</strong> 就够了，别过度设计
+</div>
+
+<h2 id="s9">九、HBase 基础操作</h2>
+<pre><span class="co"># ===== HBase Shell 基础操作 =====</span>
+<span class="co"># 创建表（列族 cf）</span>
+create <span class="st">'conversation'</span>, <span class="st">'cf'</span>
+
+<span class="co"># 插入数据</span>
+put <span class="st">'conversation'</span>, <span class="st">'rowkey_001'</span>, <span class="st">'cf:user_id'</span>, <span class="st">'user_123'</span>
+put <span class="st">'conversation'</span>, <span class="st">'rowkey_001'</span>, <span class="st">'cf:question'</span>, <span class="st">'怎么退款？'</span>
+put <span class="st">'conversation'</span>, <span class="st">'rowkey_001'</span>, <span class="st">'cf:answer'</span>, <span class="st">'请打开订单...'</span>
+
+<span class="co"># 按 RowKey 查询</span>
+get <span class="st">'conversation'</span>, <span class="st">'rowkey_001'</span>
+
+<span class="co"># 范围扫描（按 RowKey 范围）</span>
+scan <span class="st">'conversation'</span>, {STARTROW =&gt; <span class="st">'a3f1_user_123_'</span>, STOPROW =&gt; <span class="st">'a3f1_user_123|'</span>}
+
+<span class="co"># 删除</span>
+delete <span class="st">'conversation'</span>, <span class="st">'rowkey_001'</span>, <span class="st">'cf:question'</span>
+<span class="co"># 删除整行</span>
+deleteall <span class="st">'conversation'</span>, <span class="st">'rowkey_001'</span></pre>
+
+<h3>Java 客户端</h3>
+<pre><span class="co">// 创建连接</span>
+Configuration config = HBaseConfiguration.<span class="fn">create</span>();
+config.<span class="fn">set</span>(<span class="st">"hbase.zookeeper.quorum"</span>, <span class="st">"localhost:2181"</span>);
+Connection connection = ConnectionFactory.<span class="fn">createConnection</span>(config);
+Table table = connection.<span class="fn">getTable</span>(TableName.<span class="fn">valueOf</span>(<span class="st">"conversation"</span>));
+
+<span class="co">// 插入</span>
+Put put = <span class="kw">new</span> Put(Bytes.<span class="fn">toBytes</span>(<span class="st">"rowkey_001"</span>));
+put.<span class="fn">addColumn</span>(Bytes.<span class="fn">toBytes</span>(<span class="st">"cf"</span>), Bytes.<span class="fn">toBytes</span>(<span class="st">"question"</span>), Bytes.<span class="fn">toBytes</span>(<span class="st">"怎么退款？"</span>));
+put.<span class="fn">addColumn</span>(Bytes.<span class="fn">toBytes</span>(<span class="st">"cf"</span>), Bytes.<span class="fn">toBytes</span>(<span class="st">"answer"</span>), Bytes.<span class="fn">toBytes</span>(<span class="st">"请打开订单页面..."</span>));
+table.<span class="fn">put</span>(put);
+
+<span class="co">// 按 RowKey 查询</span>
+Get get = <span class="kw">new</span> Get(Bytes.<span class="fn">toBytes</span>(<span class="st">"rowkey_001"</span>));
+Result result = table.<span class="fn">get</span>(get);
+String question = Bytes.<span class="fn">toString</span>(result.<span class="fn">getValue</span>(Bytes.<span class="fn">toBytes</span>(<span class="st">"cf"</span>), Bytes.<span class="fn">toBytes</span>(<span class="st">"question"</span>)));
+
+<span class="co">// 范围扫描（用户历史对话）</span>
+Scan scan = <span class="kw">new</span> Scan();
+scan.<span class="fn">withStartRow</span>(Bytes.<span class="fn">toBytes</span>(<span class="st">"a3f1_user_123_"</span>));
+scan.<span class="fn">withStopRow</span>(Bytes.<span class="fn">toBytes</span>(<span class="st">"a3f1_user_123|"</span>));  <span class="co">// | 的 ASCII 码大于 _</span>
+ResultScanner scanner = table.<span class="fn">getScanner</span>(scan);
+<span class="kw">for</span> (Result r : scanner) {
+    <span class="co">// 处理每一行</span>
+}</pre>
+
+<h2 id="s10">十、面试速记</h2>
+<div class="qa-grid">
+  <div class="qa-card"><div class="q">HBase 的 LSM-Tree 和 MySQL 的 B+Tree 有什么区别？</div><div class="a">LSM-Tree 写入顺序追加（先 MemStore 内存 → HFile 磁盘），写极快但读要合并多个文件。B+Tree 写入要随机 I/O（页分裂），写慢但读直接定位。HBase 适合写多读少、海量数据；MySQL 适合读多写少、事务场景。</div></div>
+  <div class="qa-card"><div class="q">HBase 的 Region 是什么？怎么分裂的？</div><div class="a">Region 是一张表某一段 RowKey 范围的数据集合（默认 10GB）。Region 太大 → 分裂成两个子 Region → 均衡分布到不同 RegionServer。Region 是 HBase 的最小分布式和负载均衡单元。</div></div>
+  <div class="qa-card"><div class="q">RowKey 设计有什么讲究？</div><div class="a">长度不宜过长、必须有散列性（防止热点）、查询友好（相邻 RowKey 存一起）。经典设计：hash(user_id)前4位 + user_id + reverse_timestamp。</div></div>
+  <div class="qa-card"><div class="q">HBase 和 MySQL 分库分表怎么选？</div><div class="a">HBase 天然支持百亿级数据、动态列、水平扩展，但只支持 RowKey 查询。MySQL 分库分表保留 SQL 能力但运维复杂。按 RowKey 查为主 → HBase；需要 JOIN/子查询 → MySQL/TiDB。</div></div>
+  <div class="qa-card"><div class="q">HBase 为什么能实现毫秒级读写？</div><div class="a">写入：先写 MemStore（内存）→ 极快；刷盘写 HFile → 顺序写 → 快。读取：BlockCache（LRU 缓存热数据）+ Bloom Filter（快速判断数据是否在 HFile 中，跳过不相关的文件）。</div></div>
+  <div class="qa-card"><div class="q">HBase vs Cassandra 选谁？</div><div class="a">需要强一致性 + 已有 Hadoop 生态 → HBase。需要高可用 + 无单点 + 多数据中心 + 不想维护 Hadoop → Cassandra。HBase 是 CP，Cassandra 是 AP。</div></div>
+</div>
+
+<div class="doc-footer">
+  <p><strong>推荐阅读</strong>：《HBase 权威指南》 · <a href="https://hbase.apache.org/book.html" style="color:var(--primary);">HBase 官方文档</a> · <a href="https://cassandra.apache.org/doc/latest/" style="color:var(--primary);">Cassandra 文档</a></p>
+</div>
+
+</div>
+</body>
+</html>

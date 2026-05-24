@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>中间件实操项目 · 使用指南</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap');
+  *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+  :root{--bg:#faf8f5;--surface:#fff;--surface2:#f5f0ea;--border:#e3dbd0;--text:#3d3929;--text-dim:#8c8980;--text-bright:#1e1b18;--primary:#2563eb;--green:#2d8a4e;--orange:#b45309;--red:#dc2626;--purple:#7c3aed}
+  body{font-family:'Noto Sans SC',sans-serif;background:var(--bg);color:var(--text);line-height:1.85}
+  .container{max-width:1000px;margin:0 auto;padding:40px 24px 80px}
+  .doc-header{text-align:center;padding:60px 0 50px;position:relative}
+  .doc-header::after{content:'';position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:100px;height:3px;background:linear-gradient(90deg,transparent,var(--primary),transparent);border-radius:2px}
+  .doc-header h1{font-size:32px;font-weight:900;color:var(--text-bright)}
+  .doc-header p{font-size:14px;color:var(--text-dim);margin-top:6px}
+  h2{font-size:22px;font-weight:700;color:var(--text-bright);margin:40px 0 16px;padding-bottom:8px;border-bottom:2px solid var(--border)}
+  h3{font-size:17px;font-weight:600;color:var(--text-bright);margin:24px 0 10px}
+  p{margin-bottom:10px;font-size:14px}
+  code{font-family:'JetBrains Mono',monospace;background:var(--surface2);padding:2px 6px;border-radius:4px;font-size:13px;color:var(--red)}
+  pre{background:#1e1b18;color:#e8e4dc;padding:16px 20px;border-radius:10px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.7;margin:10px 0}
+  pre .co{color:#546e7a}pre .kw{color:#c792ea}pre .tp{color:#ffcb6b}pre .fn{color:#82aaff}pre .st{color:#c3e88d}pre .nu{color:#f78c6c}
+  table{width:100%;border-collapse:collapse;font-size:13px;margin:10px 0 16px}
+  thead th{background:var(--surface2);padding:9px 12px;border:1px solid var(--border);text-align:left;font-weight:600}
+  tbody td{padding:8px 12px;border:1px solid var(--border)}
+  tbody tr:nth-child(even){background:rgba(0,0,0,0.012)}
+  .callout{background:rgba(37,99,235,0.06);border-left:4px solid var(--primary);padding:12px 16px;border-radius:0 8px 8px 0;margin:10px 0;font-size:13px}
+  .callout.warn{background:rgba(220,38,38,0.06);border-left-color:var(--red)}
+  .callout.tip{background:rgba(45,138,78,0.06);border-left-color:var(--green)}
+  .step{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 16px;margin:8px 0;font-size:14px;counter-increment:step}
+  .steps{counter-reset:step}
+  .step::before{content:counter(step);display:inline-block;width:24px;height:24px;background:var(--primary);color:#fff;border-radius:50%;text-align:center;line-height:24px;font-size:12px;font-weight:700;margin-right:10px}
+  .module-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin:12px 0}
+  .module-card h4{font-size:16px;color:var(--primary);margin:0 0 8px}
+  .endpoint{margin:4px 0;font-size:13px}
+  .endpoint .method{font-weight:700;margin-right:8px}
+  .method.get{color:var(--green)}.method.post{color:var(--orange)}.method.delete{color:var(--red)}
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="doc-header">
+  <h1>中间件实操项目 · 使用指南</h1>
+  <p>Kafka + Elasticsearch + HBase + Qdrant — 基于 Docker 的本地实操环境</p>
+</div>
+
+<h2>一、项目结构</h2>
+<pre>middleware-practice/
+├── pom.xml                     # 父 POM (Spring Boot 3.4.5 + JDK 21)
+├── docker-compose.yml          # 一键启动所有中间件
+├── common/                     # 公共模块 (统一响应 ApiResponse)
+├── kafka-demo/     :8081       # Kafka 消息队列实操
+├── es-demo/        :8082       # Elasticsearch 搜索实操
+├── hbase-demo/     :8083       # HBase 分布式存储实操
+└── qdrant-demo/    :8084       # Qdrant 向量检索实操</pre>
+
+<h2>二、启动方式</h2>
+
+<h3>前提条件</h3>
+<div class="steps">
+  <div class="step">安装 <strong>Docker Desktop</strong> 并启动（菜单栏出现 Docker 图标即表示运行中）</div>
+  <div class="step">安装 <strong>JDK 21</strong> 和 <strong>Maven 3.6+</strong></div>
+</div>
+
+<h3>启动中间件（Docker）</h3>
+<pre><span class="co"># 1. 进入项目目录</span>
+<span class="kw">cd</span> middleware-practice
+
+<span class="co"># 2. 启动所有中间件（Kafka + ES + Kibana + HBase + Qdrant）</span>
+docker-compose up -d
+
+<span class="co"># 3. 检查是否全部启动成功</span>
+docker-compose ps
+
+<span class="co"># 期望看到 6 个容器都是 Up 状态：</span>
+<span class="co">#   zookeeper, kafka, elasticsearch, kibana, hbase, qdrant</span></pre>
+
+<h3>启动 Java 应用</h3>
+<pre><span class="co"># 在 middleware-practice 目录下：</span>
+
+<span class="co"># 编译整个项目</span>
+mvn clean compile
+
+<span class="co"># 分别启动各模块（每个终端一个）</span>
+mvn -pl kafka-demo  spring-boot:run    <span class="co"># → http://localhost:8081</span>
+mvn -pl es-demo     spring-boot:run    <span class="co"># → http://localhost:8082</span>
+mvn -pl hbase-demo  spring-boot:run    <span class="co"># → http://localhost:8083</span>
+mvn -pl qdrant-demo spring-boot:run    <span class="co"># → http://localhost:8084</span></pre>
+
+<h2>三、API 接口速查</h2>
+
+<!-- Kafka -->
+<div class="module-card">
+  <h4>Kafka 模块 (:8081) —— 消息队列</h4>
+  <p style="font-size:13px;color:var(--text-dim);">模拟场景：用户下单 → 发 Kafka 消息 → 短信服务/积分服务/分析服务并行消费</p>
+  <div class="endpoint"><span class="method post">POST</span> <code>/api/orders</code></div>
+  <pre style="margin:6px 0;font-size:12px;"><span class="co"># 创建订单 + 发消息</span>
+curl -X POST http://localhost:<span class="nu">8081</span>/api/orders \
+  -H <span class="st">'Content-Type: application/json'</span> \
+  -d <span class="st">'{"userId":"user_123","product":"iPhone15","amount":8999}'</span>
+
+<span class="co"># 看控制台输出：三个 Consumer Group 分别收到消息</span></pre>
+</div>
+
+<!-- ES -->
+<div class="module-card">
+  <h4>Elasticsearch 模块 (:8082) —— 全文搜索</h4>
+  <p style="font-size:13px;color:var(--text-dim);">模拟场景：商品索引 + 分词搜索 + 范围过滤 + 排序</p>
+  <div class="endpoint"><span class="method post">POST</span> <code>/api/products</code></div>
+  <div class="endpoint"><span class="method get">GET</span> <code>/api/products/search?keyword=...&category=...&minPrice=...&maxPrice=...</code></div>
+  <div class="endpoint"><span class="method get">GET</span> <code>/api/products/{id}</code></div>
+  <div class="endpoint"><span class="method delete">DELETE</span> <code>/api/products/{id}</code></div>
+  <pre style="margin:6px 0;font-size:12px;"><span class="co"># 索引商品</span>
+curl -X POST http://localhost:<span class="nu">8082</span>/api/products \
+  -H <span class="st">'Content-Type: application/json'</span> \
+  -d <span class="st">'{"title":"苹果iPhone 15 Pro 256G 原色钛金属","category":"手机","price":8999,"stock":120}'</span>
+
+curl -X POST http://localhost:<span class="nu">8082</span>/api/products \
+  -H <span class="st">'Content-Type: application/json'</span> \
+  -d <span class="st">'{"title":"苹果 MacBook Pro 14英寸 M3芯片","category":"笔记本","price":14999,"stock":80}'</span>
+
+<span class="co"># 分词搜索</span>
+curl <span class="st">"http://localhost:8082/api/products/search?keyword=苹果手机&minPrice=5000&maxPrice=10000"</span>
+
+<span class="co"># 按分类过滤</span>
+curl <span class="st">"http://localhost:8082/api/products/search?category=笔记本"</span></pre>
+</div>
+
+<!-- HBase -->
+<div class="module-card">
+  <h4>HBase 模块 (:8083) —— 海量对话存储</h4>
+  <p style="font-size:13px;color:var(--text-dim);">模拟场景：智能客服对话记录存储，RowKey = MD5(user_id)前4位 + user_id + 反向时间戳</p>
+  <div class="endpoint"><span class="method post">POST</span> <code>/api/chat</code></div>
+  <div class="endpoint"><span class="method get">GET</span> <code>/api/chat/history?userId=...&limit=...</code></div>
+  <div class="endpoint"><span class="method get">GET</span> <code>/api/chat/{rowKey}</code></div>
+  <pre style="margin:6px 0;font-size:12px;"><span class="co"># 保存对话</span>
+curl -X POST http://localhost:<span class="nu">8083</span>/api/chat \
+  -H <span class="st">'Content-Type: application/json'</span> \
+  -d <span class="st">'{"userId":"user_123","question":"我的快递怎么还没到？","answer":"您的快递预计明天到达，运单号SF123456"}'</span>
+
+<span class="co"># 查询用户历史对话（最新在前的范围扫描）</span>
+curl <span class="st">"http://localhost:8083/api/chat/history?userId=user_123&limit=20"</span>
+
+<span class="co"># 按 RowKey 精确查询</span>
+curl <span class="st">"http://localhost:8083/api/chat/{返回的rowKey}"</span>
+
+<span class="co"># 注意：HBase 容器首次启动需要约 30 秒初始化</span>
+<span class="co"># 如果报连接错误，稍等一会再试</span></pre>
+</div>
+
+<!-- Qdrant -->
+<div class="module-card">
+  <h4>Qdrant 模块 (:8084) —— 向量语义搜索</h4>
+  <p style="font-size:13px;color:var(--text-dim);">模拟场景：FAQ 语义搜索 — "快递没到"能匹配到"物流超时如何查询"</p>
+  <div class="endpoint"><span class="method post">POST</span> <code>/api/faq</code></div>
+  <div class="endpoint"><span class="method get">GET</span> <code>/api/faq/search?q=...&limit=...</code></div>
+  <div class="endpoint"><span class="method get">GET</span> <code>/api/faq/search-filtered?q=...&category=...</code></div>
+  <pre style="margin:6px 0;font-size:12px;"><span class="co"># 插入 FAQ（向量由 mock 生成，实际替换为 BGE/m3e 模型）</span>
+curl -X POST http://localhost:<span class="nu">8084</span>/api/faq \
+  -H <span class="st">'Content-Type: application/json'</span> \
+  -d <span class="st">'{"question":"物流超时如何查询？","answer":"打开APP→我的→帮助中心→物流查询","category":"物流"}'</span>
+
+curl -X POST http://localhost:<span class="nu">8084</span>/api/faq \
+  -H <span class="st">'Content-Type: application/json'</span> \
+  -d <span class="st">'{"question":"如何申请退款？","answer":"进入订单详情→点击申请退款→选择原因→提交","category":"售后"}'</span>
+
+<span class="co"># 语义搜索</span>
+curl <span class="st">"http://localhost:8084/api/faq/search?q=我的快递还没到怎么办&limit=3"</span>
+
+<span class="co"># 语义搜索 + 分类过滤</span>
+curl <span class="st">"http://localhost:8084/api/faq/search-filtered?q=怎么退钱&category=售后"</span></pre>
+</div>
+
+<div class="callout warn">
+  <strong>关于 Qdrant 的 mock Embedding：</strong>演示代码中用 Random 生成伪向量，所以搜索结果是随机的，仅用于验证 API 通路。<br>
+  实际接入时，替换 <code>mockEmbedding()</code> 方法为 BGE/m3e 模型的 HTTP 调用即可获得正确的语义搜索结果。
+</div>
+
+<h2>四、常用排查命令</h2>
+<pre><span class="co"># 查看所有容器状态</span>
+docker-compose ps
+
+<span class="co"># 查看某个容器的日志</span>
+docker-compose logs -f kafka
+docker-compose logs -f elasticsearch
+
+<span class="co"># 进入 Kafka 容器测试</span>
+docker exec -it middleware-practice-kafka-1 bash
+kafka-console-consumer --bootstrap-server localhost:9092 --topic order-events --from-beginning
+
+<span class="co"># 测试 ES 是否就绪</span>
+curl http://localhost:<span class="nu">9200</span>
+
+<span class="co"># 查看 HBase Master UI（容器启动后需等约 30s）</span>
+open http://localhost:<span class="nu">16010</span>
+
+<span class="co"># 停止所有容器</span>
+docker-compose down</pre>
+
+<div class="callout tip">
+  <strong>Qdrant 特殊说明：</strong>如果你的 Mac 是 Apple Silicon (M1/M2/M3)，首次启动 Qdrant 需要在 Docker Desktop 中启用 <strong>Use Rosetta for x86/amd64 emulation</strong>，或使用 <code>qdrant/qdrant:v1.9.4</code> 镜像（已支持 ARM64）。
+</div>
+
+</div>
+</body>
+</html>

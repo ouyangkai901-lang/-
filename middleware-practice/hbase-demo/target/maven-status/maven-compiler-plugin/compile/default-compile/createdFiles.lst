@@ -1,0 +1,7 @@
+com/example/hbase/controller/ChatController.class
+com/example/hbase/controller/ChatController$ChatRequest.class
+com/example/hbase/HBaseDemoApplication.class
+com/example/hbase/config/HBaseConfig.class
+com/example/hbase/service/HBaseChatService.class
+com/example/hbase/service/HBaseChatService$ChatMessage.class
+com/example/hbase/service/HBaseChatService$ChatMessage$ChatMessageBuilder.class

@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kafka 详解 · 消息队列选型对比</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap');
+  *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+  :root{--bg:#faf8f5;--surface:#ffffff;--surface2:#f5f0ea;--border:#e3dbd0;--text:#3d3929;--text-dim:#8c8980;--text-bright:#1e1b18;--primary:#2563eb;--green:#2d8a4e;--orange:#b45309;--purple:#7c3aed;--red:#dc2626;--cyan:#0d9488}
+  body{font-family:'Noto Sans SC',sans-serif;background:var(--bg);color:var(--text);line-height:1.85}
+  .container{max-width:1000px;margin:0 auto;padding:40px 24px 80px}
+  .toc{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px 28px;margin:0 0 40px}
+  .toc h3{font-size:16px;color:var(--text-bright);margin-bottom:14px}
+  .toc ol{columns:2;column-gap:24px;padding-left:20px;font-size:13px;line-height:2.2}
+  .toc ol li a{color:var(--primary);text-decoration:none}
+  .toc ol li a:hover{text-decoration:underline}
+  .doc-header{text-align:center;padding:60px 0 50px;position:relative}
+  .doc-header::after{content:'';position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:100px;height:3px;background:linear-gradient(90deg,transparent,var(--primary),transparent);border-radius:2px}
+  .doc-header h1{font-size:34px;font-weight:900;color:var(--text-bright)}
+  .doc-header .ref{font-size:14px;color:var(--text-dim);margin-top:6px}
+  h2{font-size:22px;font-weight:700;color:var(--text-bright);margin:48px 0 18px;padding-bottom:10px;border-bottom:2px solid var(--border)}
+  h3{font-size:18px;font-weight:600;color:var(--text-bright);margin:28px 0 12px}
+  p{margin-bottom:12px;font-size:14px}
+  p strong{color:var(--text-bright)}
+  code{font-family:'JetBrains Mono',monospace;background:var(--surface2);padding:2px 6px;border-radius:4px;font-size:13px;color:var(--red)}
+  pre{background:#1e1b18;color:#e8e4dc;padding:16px 20px;border-radius:10px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.7;margin:12px 0}
+  pre .co{color:#546e7a}pre .kw{color:#c792ea}pre .tp{color:#ffcb6b}pre .fn{color:#82aaff}pre .st{color:#c3e88d}pre .nu{color:#f78c6c}
+  .table-wrap{overflow-x:auto;margin:12px 0 20px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  thead th{background:var(--surface2);padding:10px 14px;border:1px solid var(--border);text-align:left;font-weight:600;color:var(--text-bright)}
+  tbody td{padding:9px 14px;border:1px solid var(--border);vertical-align:top}
+  tbody tr:nth-child(even){background:rgba(0,0,0,0.012)}
+  .callout{background:rgba(37,99,235,0.06);border-left:4px solid var(--primary);padding:12px 16px;border-radius:0 8px 8px 0;margin:12px 0;font-size:13px}
+  .callout.warn{background:rgba(220,38,38,0.06);border-left-color:var(--red)}
+  .callout.tip{background:rgba(45,138,78,0.06);border-left-color:var(--green)}
+  .diagram{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin:12px 0;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.8;white-space:pre;text-align:center}
+  .diagram.label{text-align:left}
+  .compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0}
+  .compare-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px}
+  .compare-card h4{margin:0 0 8px;font-size:15px}
+  .compare-card.good{border-left:3px solid var(--green)}
+  .compare-card.bad{border-left:3px solid var(--red)}
+  .qa-grid{display:grid;grid-template-columns:1fr;gap:8px;margin:12px 0}
+  .qa-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px}
+  .qa-card .q{font-weight:700;color:var(--text-bright);font-size:14px;margin-bottom:3px}
+  .qa-card .a{font-size:13px;color:var(--text-dim)}
+  .doc-footer{margin-top:50px;padding:24px 0;border-top:1px solid var(--border);color:var(--text-dim);font-size:13px}
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="doc-header">
+  <h1>Kafka 详解 · 消息队列选型对比</h1>
+  <p class="ref">Kafka vs RocketMQ vs RabbitMQ vs Pulsar —— 消息中间件选型决策指南</p>
+</div>
+
+<div class="toc">
+  <h3>📑 目录</h3>
+  <ol>
+    <li><a href="#s1">为什么需要消息队列？</a></li>
+    <li><a href="#s2">Kafka 核心架构</a></li>
+    <li><a href="#s3">Kafka 为什么这么快？</a></li>
+    <li><a href="#s4">Kafka vs RocketMQ</a></li>
+    <li><a href="#s5">Kafka vs RabbitMQ</a></li>
+    <li><a href="#s6">Kafka vs Pulsar</a></li>
+    <li><a href="#s7">选型决策树</a></li>
+    <li><a href="#s8">Kafka 核心操作</a></li>
+    <li><a href="#s9">常见问题与最佳实践</a></li>
+    <li><a href="#s10">面试速记</a></li>
+  </ol>
+</div>
+
+<h2 id="s1">一、为什么需要消息队列？</h2>
+<p>消息队列解决的是<strong>系统之间通信</strong>的问题。在没有消息队列之前，系统间通信靠 HTTP/RPC 同步调用：</p>
+<div class="compare-grid">
+  <div class="compare-card bad">
+    <h4>同步调用的问题</h4>
+    <p style="font-size:13px;">
+    用户下单 → 扣库存 → 发短信 → 发积分<br>
+    每个步骤串行等待，发短信慢 → 整个下单慢<br>
+    发短信失败 → 下单失败（耦合）<br>
+    流量高峰 → 后端撑不住（无缓冲）<br>
+    每天只卖100个也要时刻准备10000个的并发能力
+    </p>
+  </div>
+  <div class="compare-card good">
+    <h4>引入消息队列后</h4>
+    <p style="font-size:13px;">
+    用户下单 → 扣库存 → 发消息到 Topic<br>
+    ↓<br>
+    Topic 被 3 个消费者订阅：<br>
+    · 短信服务消费 → 发短信<br>
+    · 积分服务消费 → 发积分<br>
+    · 数据分析消费 → 记日志<br>
+    <strong>异步、解耦、削峰填谷</strong>
+    </p>
+  </div>
+</div>
+
+<h2 id="s2">二、Kafka 核心架构</h2>
+<div class="diagram">
+<strong>Kafka 逻辑架构：</strong>
+
+Producer ──→  ┌────────────────── Topic ────────────────────┐  ←── Consumer
+              │                                               │
+              │  Partition-0: [msg0][msg1][msg2][msg3]...    │
+  Producer ──→│  Partition-1: [msg0][msg1][msg2]...          │←── Consumer Group
+              │  Partition-2: [msg0][msg1][msg2][msg3][msg4] │
+              │                                               │
+              └───────────────────────────────────────────────┘
+                    ↓                           ↑
+              Broker-0 (Leader)          Broker-1 (Follower)
+              Broker-2 (Follower)        (ISR 副本同步)
+</div>
+
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>概念</th><th>说明</th><th>类比</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Broker</strong></td><td>Kafka 实例节点</td><td>服务器</td></tr>
+      <tr><td><strong>Topic</strong></td><td>消息的逻辑分类</td><td>数据库的表</td></tr>
+      <tr><td><strong>Partition</strong></td><td>Topic 的物理分片，有序队列</td><td>分表</td></tr>
+      <tr><td><strong>Producer</strong></td><td>生产者，发消息</td><td>insert 语句</td></tr>
+      <tr><td><strong>Consumer</strong></td><td>消费者，拉消息（pull 模式）</td><td>select 语句</td></tr>
+      <tr><td><strong>Consumer Group</strong></td><td>消费者组，组内负载均衡</td><td>—</td></tr>
+      <tr><td><strong>Offset</strong></td><td>消息在 Partition 中的位置</td><td>自增 ID</td></tr>
+      <tr><td><strong>ISR</strong></td><td>In-Sync Replicas，同步中的副本</td><td>MySQL 半同步从库</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="callout">
+  <strong>关键设计：Consumer Group 的负载均衡</strong><br>
+  同一个 Consumer Group 中的多个消费者，<strong>每个消费者独享一个或多个 Partition</strong>。<br>
+  规则：<strong>一个 Partition 只能被同组的一个 Consumer 消费</strong>（保证顺序），但一个 Consumer 可以消费多个 Partition。<br>
+  → Partition 数量 ≥ Consumer 数量，否则会有 Consumer 空转。
+</div>
+
+<h2 id="s3">三、Kafka 为什么这么快？</h2>
+<div class="steps">
+  <div class="step"><strong>顺序写磁盘</strong>：Kafka 将消息追加写入 Partition 文件末尾，是<strong>顺序 I/O</strong>。机械硬盘顺序写 600MB/s，随机写 100KB/s。你以为是磁盘慢，其实是随机读写慢。</div>
+  <div class="step"><strong>Page Cache（页缓存）</strong>：写入先写到 OS 的 Page Cache（内存），由 OS 决定何时刷盘。读也是优先从 Page Cache 读（热数据在内存）。</div>
+  <div class="step"><strong>零拷贝（Zero Copy）</strong>：Consumer 拉数据时，数据从磁盘 → Page Cache → 网卡，不经过用户态内存拷贝。传统方式要拷贝 4 次，零拷贝只需 2 次。</div>
+  <div class="step"><strong>批量 + 压缩</strong>：Producer 攒一批消息一起发（batch.size + linger.ms），Consumer 一次拉一批。配合 Snappy/LZ4 压缩，网络和磁盘 IO 大幅减少。</div>
+  <div class="step"><strong>稀疏索引</strong>：Kafka 不为每条消息建索引，而是每隔一定字节建一个稀疏索引，找消息时先二分定位到最近的索引，再顺序扫。</div>
+</div>
+
+<div class="callout tip">
+  <strong>一句话总结 Kafka 快的原因：</strong>顺序 I/O + 零拷贝 + Page Cache 缓存 + 批量压缩。不是在算法层面快，而是在<strong>操作系统层面</strong>让磁盘和网卡的物理极限被充分利用。
+</div>
+
+<h2 id="s4">四、Kafka vs RocketMQ</h2>
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>维度</th><th>Kafka</th><th>RocketMQ</th></tr></thead>
+    <tbody>
+      <tr><td>出身</td><td>LinkedIn → Apache</td><td>阿里 → Apache</td></tr>
+      <tr><td>吞吐量</td><td style="color:var(--green);"><strong>百万级 TPS（极高）</strong></td><td>十万级 TPS（高）</td></tr>
+      <tr><td>延迟</td><td>ms 级</td><td style="color:var(--green);"><strong>ms 级（略低）</strong></td></tr>
+      <tr><td>消息回溯</td><td>按 Offset 回溯</td><td style="color:var(--green);"><strong>按时间回溯（更灵活）</strong></td></tr>
+      <tr><td>事务消息</td><td>支持（0.11+）</td><td style="color:var(--green);"><strong>原生支持，更成熟</strong></td></tr>
+      <tr><td>顺序消息</td><td>单 Partition 内有序</td><td style="color:var(--green);"><strong>全局顺序 + 分区顺序</strong></td></tr>
+      <tr><td>延时消息</td><td>不支持（需自己实现）</td><td style="color:var(--green);"><strong>18 个延时级别</strong></td></tr>
+      <tr><td>消息过滤</td><td>客户端过滤</td><td style="color:var(--green);"><strong>Broker 端 SQL 过滤 + Tag</strong></td></tr>
+      <tr><td>死信队列</td><td>需自己实现</td><td style="color:var(--green);"><strong>内置死信队列</strong></td></tr>
+      <tr><td>运维依赖</td><td>无（KRaft 去 ZooKeeper）</td><td>NameServer（轻量级）</td></tr>
+      <tr><td>适用场景</td><td>大数据流处理、日志收集</td><td>在线业务、电商交易</td></tr>
+    </tbody>
+  </table>
+</div>
+<div class="callout">
+  <strong>选择建议：</strong>大数据/日志/流处理 → Kafka；电商交易/分布式事务/延时消息 → RocketMQ。国内互联网公司在线业务大多用 RocketMQ。
+</div>
+
+<h2 id="s5">五、Kafka vs RabbitMQ</h2>
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>维度</th><th>Kafka</th><th>RabbitMQ</th></tr></thead>
+    <tbody>
+      <tr><td>设计理念</td><td><strong>分布式日志</strong>（持久化消息流）</td><td><strong>消息代理</strong>（路由分发）</td></tr>
+      <tr><td>协议</td><td>自定义 TCP 协议</td><td>AMQP、MQTT、STOMP 多协议</td></tr>
+      <tr><td>吞吐量</td><td style="color:var(--green);"><strong>百万级</strong></td><td>万级</td></tr>
+      <tr><td>消息优先级</td><td>不支持</td><td style="color:var(--green);"><strong>支持</strong></td></tr>
+      <tr><td>路由灵活性</td><td>单一 Topic</td><td style="color:var(--green);"><strong>Exchange + Binding Key 灵活路由</strong></td></tr>
+      <tr><td>消息确认</td><td>Offset 提交</td><td style="color:var(--green);"><strong>ACK + NACK + Requeue</strong></td></tr>
+      <tr><td>集群</td><td style="color:var(--green);"><strong>原生分布式</strong></td><td>集群支持但天然不是分布式</td></tr>
+      <tr><td>适用场景</td><td>高吞吐大数据流</td><td>复杂路由、低延迟单条消息</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2 id="s6">六、Kafka vs Pulsar</h2>
+<p>Pulsar 是新一代消息系统，核心卖点是<strong>计算存储分离</strong>（BookKeeper 存储 + Broker 无状态）。</p>
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>维度</th><th>Kafka</th><th>Pulsar</th></tr></thead>
+    <tbody>
+      <tr><td>架构</td><td>Broker 即存储，耦合</td><td style="color:var(--green);"><strong>计算存储分离</strong>（Broker 无状态 + BookKeeper）</td></tr>
+      <tr><td>多租户</td><td>通过 Topic 前缀模拟</td><td style="color:var(--green);"><strong>原生 tenant/namespace 模型</strong></td></tr>
+      <tr><td>消费模型</td><td>Consumer Group</td><td style="color:var(--green);"><strong>4 种订阅模式</strong>（Exclusive/Shared/Failover/Key_Shared）</td></tr>
+      <tr><td>扩展性</td><td>扩 Partition 需迁移数据</td><td style="color:var(--green);"><strong>Broker 无状态，秒级扩容</strong></td></tr>
+      <tr><td>生态成熟度</td><td style="color:var(--green);"><strong>生态极丰富</strong></td><td>生态还在成长</td></tr>
+      <tr><td>适用场景</td><td>大部分场景</td><td>多租户平台、实时数仓</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2 id="s7">七、选型决策树</h2>
+<div class="diagram label">
+<strong>你的场景 → 选什么消息队列？</strong>
+
+  你的场景是？
+  ├── 大数据流（日志、用户行为、埋点）→ <strong>Kafka</strong>
+  ├── 电商交易（下单、支付、库存）→ <strong>RocketMQ</strong>
+  │   └── 需要延时消息 / 事务消息 → 必选 RocketMQ
+  ├── 复杂路由（Exchange、Topic 匹配规则）→ <strong>RabbitMQ</strong>
+  ├── 多租户平台（SaaS，租户隔离）→ <strong>Pulsar</strong>
+  ├── 运维简单、团队熟悉 → 选熟悉的不选新的
+  └── 数据量不大、不想维护集群 → Redis Stream / 直接 DB 轮询
+
+  <strong>你们团队（智能客服）：</strong>
+  用户行为埋点、对话日志 → <strong>Kafka</strong>（天然适合）
+  业务事件（订单、退款等） → 如果已有 RocketMQ 就用 RocketMQ，否则 Kafka 也够用
+</div>
+
+<h2 id="s8">八、Kafka 核心操作</h2>
+<pre><span class="co"># ===== Topic 管理 =====</span>
+<span class="co"># 创建 Topic（3 分区，2 副本）</span>
+kafka-topics --bootstrap-server localhost:<span class="nu">9092</span> \
+  --create --topic order-events \
+  --partitions <span class="nu">3</span> --replication-factor <span class="nu">2</span>
+
+<span class="co"># 查看 Topic 列表</span>
+kafka-topics --bootstrap-server localhost:<span class="nu">9092</span> --list
+
+<span class="co"># 查看 Topic 详情</span>
+kafka-topics --bootstrap-server localhost:<span class="nu">9092</span> --describe --topic order-events
+
+<span class="co"># 查看 Consumer Group 消费进度</span>
+kafka-consumer-groups --bootstrap-server localhost:<span class="nu">9092</span> \
+  --describe --group order-service
+
+<span class="co"># ===== 生产/消费测试 =====</span>
+<span class="co"># 生产者（控制台）</span>
+kafka-console-producer --broker-list localhost:<span class="nu">9092</span> --topic order-events
+
+<span class="co"># 消费者（从头开始读）</span>
+kafka-console-consumer --bootstrap-server localhost:<span class="nu">9092</span> \
+  --topic order-events --from-beginning</pre>
+
+<h3>Spring Boot 中集成 Kafka</h3>
+<pre><span class="co">// ===== application.yml =====</span>
+<span class="co">// spring.kafka.bootstrap-servers=localhost:9092</span>
+<span class="co">// spring.kafka.consumer.group-id=order-service</span>
+<span class="co">// spring.kafka.consumer.auto-offset-reset=earliest</span>
+
+<span class="co">// ===== Producer =====</span>
+@RestController
+<span class="kw">public</span> <span class="kw">class</span> <span class="tp">OrderController</span> {
+    <span class="kw">private</span> <span class="kw">final</span> KafkaTemplate&lt;String, OrderEvent&gt; kafka;
+
+    @PostMapping(<span class="st">"/orders"</span>)
+    <span class="kw">public</span> <span class="tp">void</span> <span class="fn">createOrder</span>(@RequestBody Order order) {
+        <span class="co">// 保存订单到 MySQL</span>
+        orderService.<span class="fn">save</span>(order);
+        <span class="co">// 发消息通知下游</span>
+        kafka.<span class="fn">send</span>(<span class="st">"order-events"</span>, order.<span class="fn">getId</span>(), <span class="kw">new</span> OrderEvent(order));
+    }
+}
+
+<span class="co">// ===== Consumer =====</span>
+@Component
+<span class="kw">public</span> <span class="kw">class</span> <span class="tp">OrderEventConsumer</span> {
+    @KafkaListener(topics = <span class="st">"order-events"</span>)
+    <span class="kw">public</span> <span class="tp">void</span> <span class="fn">handle</span>(OrderEvent event) {
+        <span class="co">// 发短信、发积分...</span>
+        smsService.<span class="fn">sendNotification</span>(event.<span class="fn">getOrder</span>());
+    }
+}</pre>
+
+<h2 id="s9">九、常见问题与最佳实践</h2>
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>问题</th><th>原因</th><th>解决</th></tr></thead>
+    <tbody>
+      <tr><td><strong>消息丢失</strong></td><td>Producer 异步发、Broker 宕机、Consumer 自动提交 Offset</td><td>Producer: acks=all; Broker: min.insync.replicas=2; Consumer: 手动提交</td></tr>
+      <tr><td><strong>消息重复</strong></td><td>Producer 重试、Consumer 处理完未提交 Offset 挂了</td><td>Consumer 做<strong>幂等</strong>（唯一键去重/Redis setnx）</td></tr>
+      <tr><td><strong>消息积压</strong></td><td>消费速度 &lt; 生产速度</td><td>① 增加 Partition + Consumer 数量；② 消费端优化（批量、异步）；③ 紧急：新建 Topic，临时 Consumer 只转发不处理</td></tr>
+      <tr><td><strong>顺序消费</strong></td><td>同一类消息到不同 Partition</td><td>Producer 指定 key，同一 key 到同一 Partition；Consumer 单线程消费该 Partition</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2 id="s10">十、面试速记</h2>
+<div class="qa-grid">
+  <div class="qa-card"><div class="q">Kafka 为什么这么快？</div><div class="a">顺序写磁盘（600MB/s）+ Page Cache + 零拷贝（sendfile）+ 批量压缩 + 稀疏索引。充分利用了操作系统的底层能力。</div></div>
+  <div class="qa-card"><div class="q">Kafka 怎么保证消息不丢？</div><div class="a">Producer: acks=all（等所有 ISR 确认）。Broker: replication.factor≥2, min.insync.replicas≥2。Consumer: 关闭自动提交，业务处理完再手动 commitSync。</div></div>
+  <div class="qa-card"><div class="q">Kafka 的 ISR 是什么？</div><div class="a">In-Sync Replicas，与 Leader 保持同步的副本集合。Follower 落后太多（replica.lag.time.max.ms=30s）会被踢出 ISR。只有 ISR 中的副本才能选为 Leader。</div></div>
+  <div class="qa-card"><div class="q">Consumer Group 的 Rebalance 什么时候触发？</div><div class="a">Consumer 数量变化（新增/下线）、Partition 数量变化、Consumer 超时未发心跳（max.poll.interval.ms）。Rebalance 期间所有 Consumer 停止消费！</div></div>
+  <div class="qa-card"><div class="q">Kafka vs RocketMQ 怎么选？</div><div class="a">大数据流/日志 → Kafka。电商交易（事务消息、延时消息）→ RocketMQ。Kafka 吞吐高，RocketMQ 功能全（事务、延时、SQL过滤、死信）。</div></div>
+  <div class="qa-card"><div class="q">消息积压了怎么办？</div><div class="a">紧急：新建 Topic 多加 Partition，写一个临时 Consumer 只做转发（不处理业务逻辑），快速清掉积压。长期：增加 Partition + 消费者实例、优化消费逻辑（批量、异步）。</div></div>
+</div>
+
+<div class="doc-footer">
+  <p><strong>推荐阅读</strong>：《Apache Kafka 实战》 · <a href="https://kafka.apache.org/documentation/" style="color:var(--primary);">Kafka 官方文档</a></p>
+</div>
+
+</div>
+</body>
+</html>

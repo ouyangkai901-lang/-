@@ -1,0 +1,5 @@
+/Users/ouyangkai/Documents/oyk_learn/后端工程师学习目录/middleware-practice/kafka-demo/src/main/java/com/example/kafka/KafkaDemoApplication.java
+/Users/ouyangkai/Documents/oyk_learn/后端工程师学习目录/middleware-practice/kafka-demo/src/main/java/com/example/kafka/config/KafkaConfig.java
+/Users/ouyangkai/Documents/oyk_learn/后端工程师学习目录/middleware-practice/kafka-demo/src/main/java/com/example/kafka/consumer/OrderEventConsumer.java
+/Users/ouyangkai/Documents/oyk_learn/后端工程师学习目录/middleware-practice/kafka-demo/src/main/java/com/example/kafka/controller/OrderController.java
+/Users/ouyangkai/Documents/oyk_learn/后端工程师学习目录/middleware-practice/kafka-demo/src/main/java/com/example/kafka/service/OrderService.java

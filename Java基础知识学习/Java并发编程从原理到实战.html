@@ -1,0 +1,1258 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Java 并发编程 · 从原理到实战</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #faf8f5;
+    --surface: #ffffff;
+    --surface2: #f5f0ea;
+    --border: #e3dbd0;
+    --text: #3d3929;
+    --text-dim: #8c8980;
+    --text-bright: #1e1b18;
+    --primary: #2563eb;
+    --green: #2d8a4e;
+    --orange: #b45309;
+    --purple: #7c3aed;
+    --red: #dc2626;
+    --cyan: #0d9488;
+    --pink: #be185d;
+  }
+
+  body {
+    font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.85;
+    min-height: 100vh;
+  }
+
+  .container { max-width: 1000px; margin: 0 auto; padding: 40px 24px 80px; }
+
+  /* ---- Navigation ---- */
+  .toc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px 28px;
+    margin: 0 0 40px;
+  }
+  .toc h3 { font-size: 16px; color: var(--text-bright); margin-bottom: 14px; }
+  .toc ol { columns: 2; column-gap: 24px; padding-left: 20px; font-size: 13px; line-height: 2.2; }
+  .toc ol li a { color: var(--primary); text-decoration: none; }
+  .toc ol li a:hover { text-decoration: underline; }
+
+  /* ---- Header ---- */
+  .doc-header {
+    text-align: center; padding: 60px 0 50px; position: relative;
+  }
+  .doc-header::after {
+    content: ''; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+    width: 100px; height: 3px;
+    background: linear-gradient(90deg, transparent, var(--primary), transparent);
+    border-radius: 2px;
+  }
+  .doc-header h1 {
+    font-size: 34px; font-weight: 900; color: var(--text-bright);
+    letter-spacing: -0.5px; margin-bottom: 8px;
+  }
+  .doc-header .ref {
+    font-size: 14px; color: var(--text-dim); font-weight: 300;
+  }
+
+  /* ---- Headings ---- */
+  h2 {
+    font-size: 24px; font-weight: 700; color: var(--text-bright);
+    margin: 48px 0 20px; padding-bottom: 10px; border-bottom: 2px solid var(--border);
+  }
+  h3 {
+    font-size: 18px; font-weight: 600; color: var(--text-bright);
+    margin: 32px 0 14px;
+  }
+  h4 {
+    font-size: 15px; font-weight: 600; color: var(--text-bright);
+    margin: 22px 0 10px;
+  }
+  p { margin-bottom: 14px; font-size: 15px; }
+  p strong { color: var(--text-bright); }
+  code {
+    font-family: 'JetBrains Mono', monospace; background: var(--surface2);
+    padding: 2px 6px; border-radius: 4px; font-size: 13px; color: var(--red);
+  }
+
+  /* ---- Code blocks ---- */
+  pre {
+    background: #1e1b18; color: #e8e4dc; padding: 18px 22px;
+    border-radius: 10px; overflow-x: auto;
+    font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.75;
+    margin: 14px 0; border: 1px solid #3d3929;
+  }
+  pre .co { color: #546e7a; }
+  pre .kw { color: #c792ea; }
+  pre .tp { color: #ffcb6b; }
+  pre .fn { color: #82aaff; }
+  pre .st { color: #c3e88d; }
+  pre .nu { color: #f78c6c; }
+  pre .an { color: #89ddff; }
+
+  /* ---- Tables ---- */
+  .table-wrap { overflow-x: auto; margin: 14px 0 22px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 600px; }
+  thead th {
+    background: var(--surface2); padding: 10px 14px; border: 1px solid var(--border);
+    text-align: left; font-weight: 600; color: var(--text-bright);
+  }
+  tbody td { padding: 10px 14px; border: 1px solid var(--border); vertical-align: top; }
+  tbody tr:nth-child(even) { background: rgba(0,0,0,0.015); }
+  tbody td:first-child { font-weight: 600; white-space: nowrap; }
+
+  /* ---- Callout boxes ---- */
+  .callout {
+    background: rgba(37, 99, 235, 0.06); border-left: 4px solid var(--primary);
+    padding: 14px 18px; border-radius: 0 8px 8px 0; margin: 14px 0; font-size: 14px;
+  }
+  .callout.warn {
+    background: rgba(220, 38, 38, 0.06); border-left-color: var(--red);
+  }
+  .callout.tip {
+    background: rgba(45, 138, 78, 0.06); border-left-color: var(--green);
+  }
+  .callout strong { color: var(--text-bright); }
+
+  /* ---- Diagram box ---- */
+  .diagram {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 18px 22px; margin: 14px 0; font-family: 'JetBrains Mono', monospace;
+    font-size: 13px; line-height: 1.8; text-align: center; white-space: pre;
+  }
+  .diagram.label { text-align: left; }
+  .diagram .red { color: var(--red); }
+
+  /* ---- Comparison grid ---- */
+  .compare-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 14px 0;
+  }
+  .compare-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 16px 20px;
+  }
+  .compare-card h4 { margin-top: 0; }
+  .compare-card.bad { border-left: 3px solid var(--red); }
+  .compare-card.good { border-left: 3px solid var(--green); }
+
+  /* ---- Steps ---- */
+  .steps { counter-reset: step; margin: 14px 0; }
+  .step {
+    counter-increment: step; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px 18px; margin: 8px 0; font-size: 14px;
+  }
+  .step::before {
+    content: counter(step);
+    display: inline-block; width: 24px; height: 24px;
+    background: var(--primary); color: #fff; border-radius: 50%;
+    text-align: center; line-height: 24px; font-size: 12px; font-weight: 700;
+    margin-right: 12px; flex-shrink: 0;
+  }
+
+  /* ---- Interview ---- */
+  .qa-grid { display: grid; grid-template-columns: 1fr; gap: 10px; margin: 14px 0; }
+  .qa-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px 18px;
+  }
+  .qa-card .q { font-weight: 700; color: var(--text-bright); font-size: 14px; margin-bottom: 4px; }
+  .qa-card .a { font-size: 13px; color: var(--text-dim); }
+
+  /* ---- Footer ---- */
+  .doc-footer {
+    margin-top: 60px; padding: 30px 0; border-top: 1px solid var(--border);
+    color: var(--text-dim); font-size: 13px;
+  }
+
+  @media (max-width: 768px) {
+    .doc-header h1 { font-size: 24px; }
+    h2 { font-size: 20px; }
+    .compare-grid { grid-template-columns: 1fr; }
+    .toc ol { columns: 1; }
+    pre { font-size: 11px; padding: 12px 14px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- ==================== HEADER ==================== -->
+  <div class="doc-header">
+    <h1>Java 并发编程 · 从原理到实战</h1>
+    <p class="ref">覆盖 synchronized / AQS / ReentrantLock / 线程池 / volatile / JUC / ConcurrentHashMap / CompletableFuture / ThreadLocal</p>
+  </div>
+
+  <!-- ==================== 目录 ==================== -->
+  <div class="toc">
+    <h3>📑 目录</h3>
+    <ol>
+      <li><a href="#s1">并发编程基础</a></li>
+      <li><a href="#s2">synchronized —— 从偏向锁到重量级锁</a></li>
+      <li><a href="#s3">volatile —— 可见性与有序性</a></li>
+      <li><a href="#s4">AQS —— J.U.C 的核心骨架</a></li>
+      <li><a href="#s5">ReentrantLock —— 可重入的显式锁</a></li>
+      <li><a href="#s6">线程池 —— 7 大参数与调优</a></li>
+      <li><a href="#s7">J.U.C 工具类</a></li>
+      <li><a href="#s8">ConcurrentHashMap</a></li>
+      <li><a href="#s9">CompletableFuture —— 异步编程</a></li>
+      <li><a href="#s10">ThreadLocal —— 隔离原理与内存泄漏</a></li>
+      <li><a href="#s11">线上排查与实战</a></li>
+      <li><a href="#s12">阿里面试真题速记</a></li>
+    </ol>
+  </div>
+
+  <!-- ==================== 一、并发基础 ==================== -->
+  <h2 id="s1">一、并发编程基础</h2>
+
+  <h3>1.1 为什么需要并发？</h3>
+  <p>
+    单线程程序在等待 IO（磁盘、网络）时会白白浪费 CPU 资源。并发编程让多个任务交替执行，
+    CPU 不必等待，整体吞吐量大幅提升。但代价是 <strong>复杂度上升</strong>：原子性、可见性、有序性三大问题。
+  </p>
+
+  <div class="callout">
+    <strong>三大核心问题：</strong><br>
+    · <strong>原子性</strong>：一个或多个操作，要么全部执行完毕不被中断，要么全不执行<br>
+    · <strong>可见性</strong>：线程 A 修改了共享变量，线程 B 是否能立即看到<br>
+    · <strong>有序性</strong>：编译器/CPU 可能会对指令重排序，多线程下可能出现意外结果
+  </div>
+
+  <h3>1.2 Java 内存模型（JMM）—— 理解"可见性"的关键</h3>
+  <p>JMM 规定：每个线程有自己的 <strong>工作内存</strong>（L1/L2 缓存），主内存是共享的。线程修改变量后必须刷新到主内存，其他线程才能看到。</p>
+
+  <div class="diagram">
+<strong>Java 内存模型的"8 种原子操作"：</strong>
+
+  lock (锁定主内存变量)
+   │
+   ▼
+  read  (从主内存读取 → 工作内存)
+   │
+   ▼
+  load  (把 read 到的值 → 工作内存副本)
+   │
+   ▼
+  use   (线程执行引擎使用该值)
+   │
+   ▼
+  assign(执行引擎赋值 → 工作内存副本)
+   │
+   ▼
+  store (工作内存副本 → 传给主内存)
+   │
+   ▼
+  write (写入主内存变量)
+   │
+   ▼
+  unlock(解锁)
+  </div>
+
+  <p><strong>happens-before 规则</strong>是 JMM 中最核心的概念：如果操作 A happens-before 操作 B，则 A 的结果对 B 可见。几条最重要的规则：</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>规则</th><th>含义</th></tr></thead>
+      <tbody>
+        <tr><td>程序次序规则</td><td>同一线程内，前面的操作 happens-before 后面的操作</td></tr>
+        <tr><td>volatile 规则</td><td>volatile 写 happens-before 后续的 volatile 读</td></tr>
+        <tr><td>锁规则</td><td>解锁 happens-before 后续对同一锁的加锁</td></tr>
+        <tr><td>传递性</td><td>如果 A hb B, B hb C → A hb C</td></tr>
+        <tr><td>线程启动规则</td><td>Thread.start() hb 该线程内的任何操作</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ==================== 二、synchronized ==================== -->
+  <h2 id="s2">二、synchronized —— 从偏向锁到重量级锁</h2>
+
+  <h3>2.1 基础用法</h3>
+  <pre><span class="co">// ① 修饰实例方法 —— 锁是 this</span>
+<span class="kw">public</span> <span class="kw">synchronized</span> <span class="tp">void</span> <span class="fn">doSomething</span>() { ... }
+
+<span class="co">// ② 修饰静态方法 —— 锁是 Class 对象</span>
+<span class="kw">public</span> <span class="kw">static</span> <span class="kw">synchronized</span> <span class="tp">void</span> <span class="fn">doSomething</span>() { ... }
+
+<span class="co">// ③ 修饰代码块 —— 锁是指定对象</span>
+<span class="kw">synchronized</span>(obj) { ... }</pre>
+
+  <h3>2.2 锁升级（膨胀）过程 —— 面试核心！</h3>
+  <p>JDK 1.6 之后，synchronized 不再是"直接拿重量级锁"，而是 <strong>逐步升级</strong> 的锁膨胀机制：</p>
+
+  <div class="diagram">
+<strong>锁升级过程：</strong>
+
+  无锁 ──▶ 偏向锁 ──▶ 轻量级锁 ──▶ 重量级锁
+              │
+        (第一个线程获取锁)
+        MarkWord 记录线程ID
+              │
+              ▼
+        (另一个线程竞争)
+        检查占用线程是否存活
+        不存活 → 撤销偏向，恢复无锁
+        存活   → 升级到轻量级锁
+              │
+              ▼
+        (CAS 自旋获取锁)
+        自旋成功 → 持锁运行
+        自旋失败 (超过10次) → 升级到重量级锁
+              │
+              ▼
+        (操作系统互斥量 mutex)
+        未拿到锁的线程 → BLOCKED 状态 → 内核态等待
+  </div>
+
+  <h4>MarkWord 是锁升级的载体</h4>
+  <p>每个 Java 对象的对象头（Object Header）中都有一个 <strong>Mark Word</strong>（32位/64位），它存储了对象的 hashCode、GC 分代年龄和<strong>锁状态</strong>。</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>锁状态</th><th>Mark Word 内容</th><th>是否偏向</th><th>锁标志位</th></tr></thead>
+      <tbody>
+        <tr><td>无锁</td><td>对象 hashCode + 分代年龄</td><td>0</td><td>01</td></tr>
+        <tr><td>偏向锁</td><td>线程 ID + Epoch + 分代年龄</td><td>1</td><td>01</td></tr>
+        <tr><td>轻量级锁</td><td>指向栈中锁记录（Lock Record）的指针</td><td>—</td><td>00</td></tr>
+        <tr><td>重量级锁</td><td>指向 monitor （互斥量）的指针</td><td>—</td><td>10</td></tr>
+        <tr><td>GC 标记</td><td>空</td><td>—</td><td>11</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout tip">
+    <strong>为什么设计锁升级？</strong><br>
+    大多数时候锁根本不存在竞争，甚至总是 <strong>同一个线程</strong> 反复获取同一把锁。
+    如果每次都走重量级锁（操作系统 mutex），线程阻塞和唤醒需要<strong>用户态↔内核态切换</strong>，成本极高。<br>
+    偏向锁和轻量级锁全程在<strong>用户态</strong>完成，只有真正出现严重竞争才升级到重量级锁。
+  </div>
+
+  <h3>2.3 synchronized 与 ReentrantLock 对比</h3>
+  <div class="compare-grid">
+    <div class="compare-card bad">
+      <h4>synchronized（内置锁）</h4>
+      <p>✅ 语法简单，自动释放<br>✅ JVM 层面优化（锁升级）<br>❌ 不可打断，一直等<br>❌ 不支持公平锁<br>❌ 不支持多个 Condition<br>❌ 拿不到锁就阻塞，没有尝试/超时机制</p>
+    </div>
+    <div class="compare-card good">
+      <h4>ReentrantLock（显式锁）</h4>
+      <p>✅ 可打断：<code>lockInterruptibly()</code><br>✅ 可超时：<code>tryLock(timeout)</code><br>✅ 支持公平锁<br>✅ 支持多个 Condition<br>✅ 灵活：非阻塞尝试 <code>tryLock()</code><br>❌ 必须手动释放（finally unlock）</p>
+    </div>
+  </div>
+
+  <!-- ==================== 三、volatile ==================== -->
+  <h2 id="s3">三、volatile —— 可见性与有序性</h2>
+
+  <h3>3.1 volatile 保证什么？不保证什么？</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>能力</th><th>保证？</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td><strong>可见性</strong></td><td style="color:var(--green);">✅ 保证</td><td>写 volatile 变量后立即刷新到主内存；读 volatile 变量时从主内存读取最新值</td></tr>
+        <tr><td><strong>有序性</strong></td><td style="color:var(--green);">✅ 保证</td><td>通过<strong>内存屏障</strong>禁止指令重排序：写之前不重排，读之后不重排</td></tr>
+        <tr><td><strong>原子性</strong></td><td style="color:var(--red);">❌ 不保证</td><td><code>volatile int i = 0; i++</code> 不是原子操作（读→改→写，三步）</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>3.2 经典场景：DCL 单例为什么必须 volatile</h3>
+  <pre><span class="kw">public</span> <span class="kw">class</span> <span class="tp">Singleton</span> {
+    <span class="co">// ★★★ 这里的 volatile 绝对不能省！★★★</span>
+    <span class="kw">private</span> <span class="kw">static</span> <span class="kw">volatile</span> <span class="tp">Singleton</span> instance;
+
+    <span class="kw">public</span> <span class="kw">static</span> <span class="tp">Singleton</span> <span class="fn">getInstance</span>() {
+        <span class="kw">if</span> (instance == <span class="kw">null</span>) {                        <span class="co">// 第一次检查</span>
+            <span class="kw">synchronized</span> (<span class="tp">Singleton</span>.class) {
+                <span class="kw">if</span> (instance == <span class="kw">null</span>) {                    <span class="co">// 第二次检查</span>
+                    instance = <span class="kw">new</span> <span class="tp">Singleton</span>();        <span class="co">// 问题在这里！</span>
+                }
+            }
+        }
+        <span class="kw">return</span> instance;
+    }
+}</pre>
+
+  <p><strong>问题所在：</strong><code>instance = new Singleton()</code> 这行代码实际包含了<strong>三步</strong>：</p>
+
+  <div class="steps">
+    <div class="step"><strong>分配内存</strong>：JVM 为 Singleton 对象分配堆空间</div>
+    <div class="step"><strong>初始化对象</strong>：调用构造函数，初始化成员变量</div>
+    <div class="step"><strong>引用赋值</strong>：将 instance 指向分配的内存地址</div>
+  </div>
+
+  <p>CPU 可能对步骤 2 和 3 <strong>重排序</strong>：先赋值引用，再初始化。如果线程 A 刚执行完步骤 3（还未执行步骤 2），线程 B 第一次检查 <code>instance != null</code>，直接返回了一个<strong>尚未初始化完毕的对象</strong>，使用时就会出现空指针等奇怪问题。</p>
+
+  <div class="callout warn">
+    <strong>volatile 的作用：</strong>通过 StoreStore + StoreLoad 内存屏障，禁止步骤 2 和 3 重排序，保证线程 B 看到的 instance 一定是<strong>已经初始化完成的完整对象</strong>。
+  </div>
+
+  <h3>3.3 内存屏障（Memory Barrier）</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>屏障类型</th><th>作用</th></tr></thead>
+      <tbody>
+        <tr><td>LoadLoad</td><td>屏障前的 Load 必须先于屏障后的 Load 完成</td></tr>
+        <tr><td>StoreStore</td><td>屏障前的 Store 必须先于屏障后的 Store 完成</td></tr>
+        <tr><td>LoadStore</td><td>屏障前的 Load 必须先于屏障后的 Store 完成</td></tr>
+        <tr><td>StoreLoad</td><td>屏障前的 Store 必须先于屏障后的 Load 完成（最强屏障，同时具备其他三种效果）</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p><strong>volatile 写时</strong>JVM 插入 <strong>StoreStore + StoreLoad</strong> 屏障；<strong>volatile 读时</strong>JVM 插入 <strong>LoadLoad + LoadStore</strong> 屏障。</p>
+
+  <!-- ==================== 四、AQS ==================== -->
+  <h2 id="s4">四、AQS —— J.U.C 的核心骨架</h2>
+
+  <div class="callout">
+    <strong>AQS（AbstractQueuedSynchronizer）</strong>是整个 J.U.C 包的<strong>底层框架</strong>。ReentrantLock、Semaphore、CountDownLatch、ReentrantReadWriteLock 全部基于 AQS 构建。
+  </div>
+
+  <h3>4.1 核心设计</h3>
+  <p>AQS 的本质是一个 <strong>FIFO 双向队列 + 一个 int 状态变量</strong>：</p>
+
+  <div class="diagram">
+<strong>AQS 数据结构：</strong>
+
+  state (volatile int)         ← 同步状态，CAS 修改
+     │
+     ▼
+  ┌───────┐   ┌───────┐   ┌───────┐
+  │ Node  │ → │ Node  │ → │ Node  │    ← CLH 队列 (FIFO 双向链表)
+  │ 线程1 │   │ 线程2 │   │ 线程3 │
+  │ 等待中 │   │ 等待中 │   │ 等待中 │
+  └───────┘   └───────┘   └───────┘
+     head                     tail
+  </div>
+
+  <p><strong>state</strong> 是核心。子类通过控制 state 的获取和释放来实现不同的同步语义：</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>实现类</th><th>state 含义</th></tr></thead>
+      <tbody>
+        <tr><td>ReentrantLock</td><td>0=未锁，1=已锁，n=重入次数（同一个线程）</td></tr>
+        <tr><td>Semaphore</td><td>剩余许可数量</td></tr>
+        <tr><td>CountDownLatch</td><td>倒计数值，count=0 时唤醒等待线程</td></tr>
+        <tr><td>ReentrantReadWriteLock</td><td>高 16 位=读锁持有次数，低 16 位=写锁持有次数</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>4.2 获取锁的流程</h3>
+  <pre><span class="co">// ReentrantLock 内部使用 Sync（继承 AQS）</span>
+<span class="kw">public</span> <span class="kw">final</span> <span class="tp">void</span> <span class="fn">acquire</span>(<span class="tp">int</span> arg) {
+    <span class="kw">if</span> (!<span class="fn">tryAcquire</span>(arg) &amp;&amp;                       <span class="co">// ① 子类实现，CAS 尝试获取</span>
+        <span class="fn">acquireQueued</span>(<span class="fn">addWaiter</span>(Node.EXCLUSIVE), arg)) <span class="co">// ② 失败→入队→自旋/阻塞</span>
+        <span class="fn">selfInterrupt</span>();                             <span class="co">// ③ 被唤醒后补上中断标志</span>
+}</pre>
+
+  <div class="diagram label">
+<strong>获取锁流程（以 ReentrantLock 为例）：</strong>
+
+① tryAcquire(arg): 检查 state==0 ?
+   ├── 是 → CAS 设 state=1，设置 owner 为当前线程 → 成功
+   └── 否 → state>0 且 owner 是自己 → state++（重入）
+           → owner 是别人 → 返回 false，继续 ↓
+
+② addWaiter(Node.EXCLUSIVE): 当前线程封装成 Node，CAS 入队尾
+
+③ acquireQueued(node): 自旋
+   ├── 前驱是 head → 再 tryAcquire 一次
+   │   ├── 成功 → 出队，成为新 head
+   │   └── 失败 → 继续
+   └── 前驱不是 head → park() 挂起（Unsafe.park）
+       └── 前驱释放时 unpark 唤醒 → 继续自旋
+  </div>
+
+  <h3>4.3 释放锁的流程</h3>
+  <pre><span class="kw">public</span> <span class="kw">final</span> <span class="tp">boolean</span> <span class="fn">release</span>(<span class="tp">int</span> arg) {
+    <span class="kw">if</span> (<span class="fn">tryRelease</span>(arg)) {          <span class="co">// ① 子类实现，state-- 或设为 0</span>
+        Node h = head;
+        <span class="kw">if</span> (h != <span class="kw">null</span> &amp;&amp; h.waitStatus != <span class="num">0</span>)
+            <span class="fn">unparkSuccessor</span>(h);        <span class="co">// ② 唤醒 head 的后继节点</span>
+        <span class="kw">return</span> <span class="kw">true</span>;
+    }
+    <span class="kw">return</span> <span class="kw">false</span>;
+}
+
+<span class="co">// ReentrantLock 的 tryRelease：</span>
+<span class="kw">protected</span> <span class="kw">final</span> <span class="tp">boolean</span> <span class="fn">tryRelease</span>(<span class="tp">int</span> releases) {
+    <span class="tp">int</span> c = <span class="fn">getState</span>() - releases;      <span class="co">// state - 1</span>
+    <span class="kw">if</span> (Thread.<span class="fn">currentThread</span>() != <span class="fn">getExclusiveOwnerThread</span>())
+        <span class="kw">throw</span> <span class="kw">new</span> <span class="tp">IllegalMonitorStateException</span>();
+    <span class="tp">boolean</span> free = <span class="kw">false</span>;
+    <span class="kw">if</span> (c == <span class="num">0</span>) {
+        free = <span class="kw">true</span>;
+        <span class="fn">setExclusiveOwnerThread</span>(<span class="kw">null</span>);    <span class="co">// 重入全部释放才清 owner</span>
+    }
+    <span class="fn">setState</span>(c);                         <span class="co">// CAS 设置 state</span>
+    <span class="kw">return</span> free;
+}</pre>
+
+  <!-- ==================== 五、ReentrantLock ==================== -->
+  <h2 id="s5">五、ReentrantLock —— 可重入的显式锁</h2>
+
+  <h3>5.1 公平锁 vs 非公平锁</h3>
+
+  <div class="compare-grid">
+    <div class="compare-card good">
+      <h4>非公平锁（默认）NonfairSync</h4>
+      <pre style="background:transparent;color:var(--text);padding:0;font-size:12px;"><span class="co">// 一上来直接 CAS 抢锁</span>
+<span class="kw">final</span> <span class="tp">void</span> <span class="fn">lock</span>() {
+    <span class="kw">if</span> (<span class="fn">compareAndSetState</span>(<span class="num">0</span>, <span class="num">1</span>))
+        <span class="fn">setExclusiveOwnerThread</span>(...);
+    <span class="kw">else</span>
+        <span class="fn">acquire</span>(<span class="num">1</span>);  <span class="co">// 抢失败再排队</span>
+}</pre>
+      <p style="font-size:13px;margin-top:8px;">性能更好：刚释放锁的线程可能仍在 CPU 上，再获取成功率高，减少上下文切换</p>
+    </div>
+    <div class="compare-card bad">
+      <h4>公平锁 FairSync</h4>
+      <pre style="background:transparent;color:var(--text);padding:0;font-size:12px;"><span class="co">// 先检查队列</span>
+<span class="kw">final</span> <span class="tp">void</span> <span class="fn">lock</span>() {
+    <span class="fn">acquire</span>(<span class="num">1</span>);  <span class="co">// 走排队流程</span>
+}
+<span class="kw">protected</span> <span class="kw">final</span> <span class="tp">boolean</span> <span class="fn">tryAcquire</span>(...) {
+    <span class="kw">if</span> (state == <span class="num">0</span>) {
+        <span class="co">// hasQueuedPredecessors(): 前面有人在排吗？</span>
+        <span class="kw">if</span> (!<span class="fn">hasQueuedPredecessors</span>() &amp;&amp; ...)
+            ... <span class="co">// 只有队首才能抢</span>
+    }
+}</pre>
+      <p style="font-size:13px;margin-top:8px;">线程饥饿概率低，但频繁上下文切换，吞吐量差</p>
+    </div>
+  </div>
+
+  <h3>5.2 Condition —— 等待/通知机制</h3>
+  <p>ReentrantLock 可以创建多个 Condition，实现精确唤醒。而 synchronized 只有一个等待队列（wait/notify）。</p>
+
+  <pre><span class="kw">class</span> <span class="tp">BoundedBuffer</span> {
+    <span class="kw">final</span> <span class="tp">ReentrantLock</span> lock = <span class="kw">new</span> <span class="tp">ReentrantLock</span>();
+    <span class="kw">final</span> <span class="tp">Condition</span> notFull  = lock.<span class="fn">newCondition</span>();  <span class="co">// 缓冲区不满</span>
+    <span class="kw">final</span> <span class="tp">Condition</span> notEmpty = lock.<span class="fn">newCondition</span>();  <span class="co">// 缓冲区不空</span>
+
+    <span class="kw">final</span> Object[] items = <span class="kw">new</span> Object[<span class="num">100</span>];
+    <span class="tp">int</span> putptr, takeptr, count;
+
+    <span class="kw">public</span> <span class="tp">void</span> <span class="fn">put</span>(Object x) <span class="kw">throws</span> InterruptedException {
+        lock.<span class="fn">lock</span>();
+        <span class="kw">try</span> {
+            <span class="kw">while</span> (count == items.length)
+                notFull.<span class="fn">await</span>();           <span class="co">// 满了，等 notFull 信号</span>
+            items[putptr] = x;
+            <span class="kw">if</span> (++putptr == items.length) putptr = <span class="num">0</span>;
+            ++count;
+            notEmpty.<span class="fn">signal</span>();              <span class="co">// 有数据了，唤醒消费者</span>
+        } <span class="kw">finally</span> { lock.<span class="fn">unlock</span>(); }
+    }
+
+    <span class="kw">public</span> Object <span class="fn">take</span>() <span class="kw">throws</span> InterruptedException {
+        lock.<span class="fn">lock</span>();
+        <span class="kw">try</span> {
+            <span class="kw">while</span> (count == <span class="num">0</span>)
+                notEmpty.<span class="fn">await</span>();          <span class="co">// 空了，等 notEmpty 信号</span>
+            Object x = items[takeptr];
+            <span class="kw">if</span> (++takeptr == items.length) takeptr = <span class="num">0</span>;
+            --count;
+            notFull.<span class="fn">signal</span>();               <span class="co">// 有空位了，唤醒生产者</span>
+            <span class="kw">return</span> x;
+        } <span class="kw">finally</span> { lock.<span class="fn">unlock</span>(); }
+    }
+}</pre>
+
+  <h3>5.3 Condition 和 Object wait/notify 的本质区别</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>对比</th><th>Object wait/notify</th><th>Condition await/signal</th></tr></thead>
+      <tbody>
+        <tr><td>搭配</td><td>synchronized</td><td>ReentrantLock</td></tr>
+        <tr><td>等待队列数</td><td><strong>1 个</strong></td><td><strong>多个</strong>（精确唤醒）</td></tr>
+        <tr><td>中断响应</td><td>不支持</td><td>支持 lockInterruptibly，await 可中断</td></tr>
+        <tr><td>超时</td><td>不支持</td><td>支持 await(timeout)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ==================== 六、线程池 ==================== -->
+  <h2 id="s6">六、线程池 —— 7 大参数与调优</h2>
+
+  <h3>6.1 为什么要用线程池？</h3>
+  <p><strong>复用线程</strong>，减少创建/销毁开销（线程的创建约 1ms，约 1MB 栈内存）；<strong>控制最大并发数</strong>，防止无限制创建线程导致 OOM。</p>
+
+  <h3>6.2 核心构造函数：7 大参数</h3>
+
+  <pre><span class="kw">public</span> <span class="tp">ThreadPoolExecutor</span>(
+    <span class="tp">int</span> corePoolSize,        <span class="co">// ① 核心线程数</span>
+    <span class="tp">int</span> maximumPoolSize,     <span class="co">// ② 最大线程数</span>
+    <span class="tp">long</span> keepAliveTime,      <span class="co">// ③ 空闲线程存活时间</span>
+    TimeUnit unit,             <span class="co">// ④ 时间单位</span>
+    BlockingQueue&lt;Runnable&gt; workQueue, <span class="co">// ⑤ 任务队列（阻塞队列）</span>
+    ThreadFactory threadFactory,      <span class="co">// ⑥ 线程工厂（命名/守护）</span>
+    RejectedExecutionHandler handler   <span class="co">// ⑦ 拒绝策略</span>
+)</pre>
+
+  <h3>6.3 线程池工作流程（面试必画！）</h3>
+  <div class="diagram label">
+<strong>任务提交后的执行流程：</strong>
+
+  task 到达
+     │
+     ▼
+  核心线程数 &lt; corePoolSize？
+     ├── 是 → 创建新核心线程执行任务
+     │
+     └── 否 → 工作队列满了？
+                  │
+                  ├── 否 → 放入工作队列等待
+                  │
+                  └── 是 → 线程数 &lt; maximumPoolSize？
+                              │
+                              ├── 是 → 创建新非核心线程执行
+                              │
+                              └── 否 → 执行 <strong>拒绝策略</strong>
+  </div>
+
+  <h3>6.4 4 种拒绝策略</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>策略</th><th>行为</th><th>适用场景</th></tr></thead>
+      <tbody>
+        <tr><td><code>AbortPolicy</code>（默认）</td><td>抛出 RejectedExecutionException</td><td>必须感知拒绝的场景</td></tr>
+        <tr><td><code>CallerRunsPolicy</code></td><td>由提交任务的线程（调用者）自己执行</td><td>主线程能分担，可配合限流</td></tr>
+        <tr><td><code>DiscardPolicy</code></td><td>直接丢弃，不抛异常</td><td>允许丢任务（如日志采样）</td></tr>
+        <tr><td><code>DiscardOldestPolicy</code></td><td>丢弃队列头（最旧）的任务，重新提交</td><td>新任务比旧任务更重要</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>6.5 参数调优：CPU 密集 vs IO 密集</h3>
+  <div class="compare-grid">
+    <div class="compare-card">
+      <h4>CPU 密集型</h4>
+      <p>大部分时间在 <strong>计算</strong>（加密、图像处理、算法）</p>
+      <pre style="background:transparent;color:var(--text);padding:0;font-size:12px;">corePoolSize = CPU 核数 + <span class="nu">1</span>
+<span class="co">// 加 1 是为了偶尔的缺页中断</span></pre>
+      <p style="font-size:13px;margin-top:8px;">线程再多也没用，反而因上下文切换降低效率</p>
+    </div>
+    <div class="compare-card">
+      <h4>IO 密集型</h4>
+      <p>大部分时间在 <strong>等待 IO</strong>（网络请求、数据库查询）</p>
+      <pre style="background:transparent;color:var(--text);padding:0;font-size:12px;">corePoolSize = CPU 核数 × <span class="nu">2</span>
+<span class="co">// 或者：</span>
+= CPU 核数 × (1 + 等待时间/计算时间)</pre>
+      <p style="font-size:13px;margin-top:8px;">线程在等 IO 时 CPU 空闲，多开线程提高吞吐</p>
+    </div>
+  </div>
+
+  <h3>6.6 常见线程池（Executors —— 不建议直接使用）</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>工厂方法</th><th>队列</th><th>风险</th></tr></thead>
+      <tbody>
+        <tr><td><code>newFixedThreadPool(n)</code></td><td>无界 LinkedBlockingQueue</td><td style="color:var(--red);">队列无限长 → 任务堆积 → OOM</td></tr>
+        <tr><td><code>newCachedThreadPool()</code></td><td>SynchronousQueue（不存任务，直接交线程）</td><td style="color:var(--red);">最大线程数 Integer.MAX_VALUE → OOM</td></tr>
+        <tr><td><code>newSingleThreadExecutor()</code></td><td>无界 LinkedBlockingQueue</td><td style="color:var(--red);">同 FixedThreadPool(1)，OOM</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout warn">
+    <strong>阿里开发规范强制：</strong>必须用 <code>new ThreadPoolExecutor()</code> 显式传参，不允许用 Executors 工厂方法！
+  </div>
+
+  <div class="callout tip">
+    <strong>最佳实践：</strong><br>
+    · <code>ThreadFactory</code> 一定要给线程命名，方便监控排查<br>
+    · 队列建议用<strong>有界</strong>的 ArrayBlockingQueue，配合 <code>CallerRunsPolicy</code> 做背压<br>
+    · 如果需要任务完成后回调，使用 <code>submit()</code> 返回 Future
+  </div>
+
+  <!-- ==================== 七、J.U.C 工具类 ==================== -->
+  <h2 id="s7">七、J.U.C 工具类</h2>
+
+  <h3>7.1 CountDownLatch —— 一等多</h3>
+  <p>一个线程等待多个线程完成任务。计数器减到 0 时，await 的线程被唤醒。<strong>不可复用，用一次就没。</strong></p>
+  <pre><span class="co">// 场景：裁判等 3 个运动员都到达终点</span>
+<span class="tp">CountDownLatch</span> latch = <span class="kw">new</span> <span class="tp">CountDownLatch</span>(<span class="nu">3</span>);
+
+<span class="kw">for</span> (<span class="tp">int</span> i = <span class="nu">0</span>; i &lt; <span class="nu">3</span>; i++) {
+    <span class="kw">new</span> <span class="tp">Thread</span>(() -&gt; {
+        <span class="fn">doWork</span>();
+        latch.<span class="fn">countDown</span>();      <span class="co">// 每个运动员到达 → count--</span>
+    }).start();
+}
+latch.<span class="fn">await</span>();                     <span class="co">// 裁判等待 count=0</span>
+<span class="co">// 所有人到达，继续执行</span></pre>
+
+  <h3>7.2 CyclicBarrier —— 多对多互相等</h3>
+  <p>一组线程互相等待，所有人都到达屏障点后再一起继续。<strong>可循环复用。</strong></p>
+  <pre><span class="co">// 场景：3 个选手准备好后同时起跑</span>
+<span class="tp">CyclicBarrier</span> barrier = <span class="kw">new</span> <span class="tp">CyclicBarrier</span>(<span class="nu">3</span>, () -&gt; {
+    <span class="co">// 所有人都到齐后执行的回调（由最后一个到达的线程执行）</span>
+    System.out.<span class="fn">println</span>(<span class="st">"所有人就位，出发！"</span>);
+});
+
+<span class="kw">for</span> (<span class="tp">int</span> i = <span class="nu">0</span>; i &lt; <span class="nu">3</span>; i++) {
+    <span class="kw">new</span> <span class="tp">Thread</span>(() -&gt; {
+        <span class="fn">prepare</span>();
+        barrier.<span class="fn">await</span>();        <span class="co">// 等人齐</span>
+        <span class="fn">run</span>();                  <span class="co">// 人齐了一起跑</span>
+    }).start();
+}</pre>
+
+  <h3>7.3 Semaphore —— 信号量，控制并发数量</h3>
+  <pre><span class="co">// 场景：数据库连接池最多 5 个连接</span>
+<span class="tp">Semaphore</span> semaphore = <span class="kw">new</span> <span class="tp">Semaphore</span>(<span class="nu">5</span>);  <span class="co">// 5 个许可</span>
+
+<span class="kw">for</span> (<span class="tp">int</span> i = <span class="nu">0</span>; i &lt; <span class="nu">20</span>; i++) {
+    <span class="kw">new</span> <span class="tp">Thread</span>(() -&gt; {
+        semaphore.<span class="fn">acquire</span>();          <span class="co">// 获取许可（阻塞）</span>
+        <span class="kw">try</span> {
+            <span class="fn">useDBConnection</span>();   <span class="co">// 最多 5 个线程同时执行</span>
+        } <span class="kw">finally</span> {
+            semaphore.<span class="fn">release</span>();      <span class="co">// 释放许可</span>
+        }
+    }).start();
+}</pre>
+
+  <h3>7.4 三者对比</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>工具</th><th>核心功能</th><th>可复用？</th><th>典型场景</th></tr></thead>
+      <tbody>
+        <tr><td>CountDownLatch</td><td>1 等 N 完成</td><td>❌ 一次</td><td>主线程等子线程初始化完毕</td></tr>
+        <tr><td>CyclicBarrier</td><td>N 个互相等待</td><td>✅ 循环</td><td>多线程分段批量处理</td></tr>
+        <tr><td>Semaphore</td><td>控制同时执行的线程数</td><td>✅ 进出</td><td>限流、连接池</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>7.5 Atomic 原子类</h3>
+  <p>基于 <strong>CAS（Compare And Swap）</strong> 实现的无锁原子操作。比 synchronized 轻量，适合简单的计数/标记场景。</p>
+  <pre><span class="co">// CAS 的三个操作数：内存地址 V、期望旧值 A、新值 B</span>
+<span class="co">// 如果 V == A，则更新为 B，返回 true</span>
+<span class="co">// 否则不更新，返回 false，自旋重试</span>
+
+<span class="kw">public</span> <span class="kw">final</span> <span class="tp">int</span> <span class="fn">getAndAddInt</span>(Object o, <span class="tp">long</span> offset, <span class="tp">int</span> delta) {
+    <span class="tp">int</span> v;
+    <span class="kw">do</span> {
+        v = <span class="fn">getIntVolatile</span>(o, offset);          <span class="co">// 读取当前值</span>
+    } <span class="kw">while</span> (!<span class="fn">compareAndSwapInt</span>(o, offset, v, v + delta)); <span class="co">// CAS</span>
+    <span class="kw">return</span> v;
+}</pre>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>类型</th><th>原子类</th><th>特点</th></tr></thead>
+      <tbody>
+        <tr><td>基本类型</td><td>AtomicInteger, AtomicLong, AtomicBoolean</td><td>单个值的原子操作</td></tr>
+        <tr><td>数组</td><td>AtomicIntegerArray, AtomicLongArray</td><td>数组元素的原子更新</td></tr>
+        <tr><td>引用</td><td>AtomicReference</td><td>对象引用的原子 CAS</td></tr>
+        <tr><td>字段更新</td><td>AtomicIntegerFieldUpdater</td><td>原子更新对象中的 volatile 字段</td></tr>
+        <tr><td>累加器</td><td>LongAdder, DoubleAdder</td><td>高并发下比 AtomicLong 性能更好（分 Cell 分散竞争）</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout tip">
+    <strong>CAS 的问题：</strong><br>
+    · <strong>ABA 问题</strong>：值从 A→B→A，CAS 检查认为是 A 不变 — 解决：<code>AtomicStampedReference</code> 带版本号<br>
+    · <strong>自旋 CPU 开销</strong>：CAS 失败会一直循环重试 — 通常自旋次数有限，超限则用锁<br>
+    · <strong>只能保证一个变量的原子操作</strong> — 多个变量需要 <code>AtomicReference</code> 或锁
+  </div>
+
+  <!-- ==================== 八、ConcurrentHashMap ==================== -->
+  <h2 id="s8">八、ConcurrentHashMap</h2>
+
+  <h3>8.1 JDK 1.7 → JDK 1.8 的重大变化</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>对比维度</th><th>JDK 1.7</th><th>JDK 1.8</th></tr></thead>
+      <tbody>
+        <tr><td>数据结构</td><td>Segment 数组 + HashEntry 链表</td><td>Node 数组 + 链表 + 红黑树（和 HashMap 一致）</td></tr>
+        <tr><td>锁粒度</td><td>锁 Segment（默认 16 个），锁住一段</td><td>锁链表头节点（一个桶），更细粒度</td></tr>
+        <tr><td>并发度</td><td>默认 16（Segment 数量）</td><td>桶的数量（理论上更高）</td></tr>
+        <tr><td>锁机制</td><td>ReentrantLock 锁 Segment</td><td>CAS + synchronized 锁头节点</td></tr>
+        <tr><td>读操作</td><td>volatile 保证可见性</td><td>volatile + 完全无锁</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>8.2 JDK 1.7 —— Segment 分段锁</h3>
+  <div class="diagram">
+<strong>JDK 1.7 ConcurrentHashMap 结构：</strong>
+
+  ┌──────────┬──────────┬──────────┬──────────┐
+  │Segment[0]│Segment[1]│Segment[2]│   ...    │   ← 默认 16 个 Segment
+  │ 锁范围1  │ 锁范围2  │ 锁范围3  │          │
+  │ ┌──┬──┐ │          │          │          │
+  │ │H1│H2│ │          │          │          │
+  │ └──┴──┘ │          │          │          │
+  │ HashEntry链表        │          │          │
+  └──────────┴──────────┴──────────┴──────────┘
+
+  两次 hash 定位：
+   ① key.hashCode() → 定位到哪个 Segment
+   ② 再 hash → 定位到 Segment 内的哪个 HashEntry
+  </div>
+
+  <h3>8.3 JDK 1.8 —— CAS + synchronized 锁单个桶</h3>
+  <p>抛弃了 Segment，直接对 table 数组操作。数据结构和 HashMap 完全一致（Node 数组 + 链表 + 红黑树）。</p>
+
+  <pre><span class="co">// putVal 核心代码（简化）</span>
+<span class="kw">final</span> V <span class="fn">putVal</span>(K key, V value, <span class="tp">boolean</span> onlyIfAbsent) {
+    <span class="kw">if</span> (key == <span class="kw">null</span> || value == <span class="kw">null</span>) <span class="kw">throw</span> <span class="kw">new</span> <span class="tp">NullPointerException</span>();
+    <span class="tp">int</span> hash = <span class="fn">spread</span>(key.hashCode());    <span class="co">// 1. 高位扰动</span>
+    <span class="kw">for</span> (Node&lt;K,V&gt;[] tab = table;;) {
+        Node&lt;K,V&gt; f;
+        <span class="kw">if</span> (tab == <span class="kw">null</span>)
+            tab = <span class="fn">initTable</span>();             <span class="co">// 2. 初始化 table（CAS）</span>
+        <span class="kw">else</span> <span class="kw">if</span> ((f = <span class="fn">tabAt</span>(tab, i = (tab.length-<span class="nu">1</span>) &amp; hash)) == <span class="kw">null</span>) {
+            <span class="co">// 3. 桶为空 → CAS 直接插入</span>
+            <span class="kw">if</span> (<span class="fn">casTabAt</span>(tab, i, <span class="kw">null</span>, <span class="kw">new</span> Node&lt;&gt;(hash, key, value)))
+                <span class="kw">break</span>;
+        }
+        <span class="kw">else</span> <span class="kw">if</span> (f.hash == MOVED)
+            tab = <span class="fn">helpTransfer</span>(tab, f);      <span class="co">// 4. 正在扩容，帮忙迁移</span>
+        <span class="kw">else</span> {
+            <span class="co">// 5. 锁住桶的头节点，插入链表或红黑树</span>
+            <span class="kw">synchronized</span> (f) {
+                <span class="co">// ... 遍历链表/红黑树，插入或覆盖</span>
+            }
+        }
+    }
+}</pre>
+
+  <h3>8.4 ConcurrentHashMap 的 size() 怎么算？</h3>
+  <p>不是锁住整个表去 count，而是：</p>
+  <ul style="font-size:14px;padding-left:20px;line-height:2;">
+    <li>JDK 1.7：统计每个 Segment 的 count（遍历 Segment，尝试 3 次不加锁计算，若期间变化则加锁重算）</li>
+    <li>JDK 1.8：在所有写操作时通过 <code>addCount()</code> 累加到一个 baseCount + CounterCell 数组，读 size 时 sum 所有 CounterCell + baseCount</li>
+  </ul>
+
+  <h3>8.5 JDK 1.8 扩容 —— 多线程协同迁移</h3>
+  <p>扩容时，在旧的 table 上插入 <code>ForwardingNode</code> 标记该桶已经迁移完毕。其他线程在读写时遇到 ForwardingNode 会<strong>帮忙迁移</strong>（helpTransfer），分散扩容压力。</p>
+
+  <!-- ==================== 九、CompletableFuture ==================== -->
+  <h2 id="s9">九、CompletableFuture —— 异步编程</h2>
+
+  <h3>9.1 为什么要用 CompletableFuture？</h3>
+  <p><strong>Future 的痛点</strong>：get() 阻塞等待结果 → CPU 闲着。多个 Future 之间有依赖关系 → 写成回调地狱。</p>
+  <p><strong>CompletableFuture</strong>：支持 <strong>链式调用、组合编排、异常处理、超时控制</strong>，把你的异步任务组合成一棵执行树。</p>
+
+  <h3>9.2 核心方法速览</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>类别</th><th>方法</th><th>作用</th></tr></thead>
+      <tbody>
+        <tr><td>创建</td><td><code>supplyAsync(() -> result)</code></td><td>有返回值的异步任务</td></tr>
+        <tr><td>创建</td><td><code>runAsync(() -> {})</code></td><td>无返回值的异步任务</td></tr>
+        <tr><td>链式</td><td><code>thenApply(fn)</code></td><td>拿到上一个结果 → 转换 → 返回新结果</td></tr>
+        <tr><td>链式</td><td><code>thenAccept(consumer)</code></td><td>消费结果，无返回值</td></tr>
+        <tr><td>链式</td><td><code>thenRun(runnable)</code></td><td>不关心上一步结果，继续执行</td></tr>
+        <tr><td>组合</td><td><code>thenCombine(other, fn)</code></td><td>两个任务都完成，合并结果</td></tr>
+        <tr><td>组合</td><td><code>thenCompose(fn)</code></td><td>依赖上一个结果，产生新的 CF（扁平化）</td></tr>
+        <tr><td>并行</td><td><code>allOf(cf1, cf2, ...)</code></td><td>全部完成才继续</td></tr>
+        <tr><td>并行</td><td><code>anyOf(cf1, cf2, ...)</code></td><td>任意一个完成就继续</td></tr>
+        <tr><td>异常</td><td><code>exceptionally(fn)</code></td><td>异常时返回兜底值</td></tr>
+        <tr><td>异常</td><td><code>handle((res, ex) -> ...)</code></td><td>正常和异常都走这里</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>9.3 实战：并行调用 + 聚合结果</h3>
+  <pre><span class="co">// 场景：查询用户信息，需要调 3 个微服务</span>
+<span class="tp">CompletableFuture</span>&lt;UserInfo&gt; userFuture = <span class="tp">CompletableFuture</span>
+    .<span class="fn">supplyAsync</span>(() -&gt; <span class="fn">queryUser</span>(userId));        <span class="co">// ① 查用户</span>
+
+<span class="tp">CompletableFuture</span>&lt;List&lt;Order&gt;&gt; orderFuture = <span class="tp">CompletableFuture</span>
+    .<span class="fn">supplyAsync</span>(() -&gt; <span class="fn">queryOrders</span>(userId));    <span class="co">// ② 查订单</span>
+
+<span class="tp">CompletableFuture</span>&lt;Integer&gt; pointFuture = <span class="tp">CompletableFuture</span>
+    .<span class="fn">supplyAsync</span>(() -&gt; <span class="fn">queryPoints</span>(userId));    <span class="co">// ③ 查积分</span>
+
+<span class="co">// 三个都完成 → 合并结果</span>
+<span class="tp">CompletableFuture</span>&lt;UserDTO&gt; result = userFuture
+    .<span class="fn">thenCombine</span>(orderFuture, (user, orders) -&gt; {    <span class="co">// ④ 合并 ①+②</span>
+        user.<span class="fn">setOrders</span>(orders);
+        <span class="kw">return</span> user;
+    })
+    .<span class="fn">thenCombine</span>(pointFuture, (user, points) -&gt; {    <span class="co">// ⑤ 合并 ①+②+③</span>
+        user.<span class="fn">setPoints</span>(points);
+        <span class="kw">return</span> user;
+    });
+
+<span class="co">// 或者等所有完成</span>
+<span class="tp">CompletableFuture</span>.<span class="fn">allOf</span>(userFuture, orderFuture, pointFuture)
+    .<span class="fn">join</span>();  <span class="co">// 等待所有完成</span>
+
+UserDTO dto = result.<span class="fn">get</span>(<span class="nu">3000</span>, TimeUnit.MILLISECONDS);  <span class="co">// 超时控制</span></pre>
+
+  <h3>9.4 线程池一定要自定义！</h3>
+  <div class="callout warn">
+    <code>supplyAsync(Runnable)</code> 默认使用 <strong>ForkJoinPool.commonPool()</strong>（CPU 核数 - 1 个线程），多路并行时性能瓶颈明显。<br>
+    <strong>必须：</strong><code>supplyAsync(runnable, myThreadPool)</code> 传入自定义线程池。
+  </div>
+
+  <!-- ==================== 十、ThreadLocal ==================== -->
+  <h2 id="s10">十、ThreadLocal</h2>
+
+  <h3>10.1 一个引子：同样一个 ThreadLocal 对象，不同线程为什么拿到不同的值？</h3>
+
+  <p>先看一段代码，建立一个直观感受：</p>
+
+  <pre><span class="co">// 全局只有一个 ThreadLocal 对象！</span>
+<span class="kw">public</span> <span class="kw">static</span> <span class="kw">final</span> <span class="tp">ThreadLocal</span>&lt;String&gt; tl = <span class="kw">new</span> <span class="tp">ThreadLocal</span>&lt;&gt;();
+
+<span class="kw">new</span> <span class="tp">Thread</span>(() -&gt; {
+    tl.<span class="fn">set</span>(<span class="st">"小明"</span>);
+    System.out.<span class="fn">println</span>(tl.<span class="fn">get</span>());   <span class="co">// → "小明"</span>
+}).start();
+
+<span class="kw">new</span> <span class="tp">Thread</span>(() -&gt; {
+    tl.<span class="fn">set</span>(<span class="st">"小红"</span>);
+    System.out.<span class="fn">println</span>(tl.<span class="fn">get</span>());   <span class="co">// → "小红"</span>
+}).start();</pre>
+
+  <p><strong>关键点：</strong>全局只有一个 <code>tl</code> 对象，但线程1和线程2各自 set 之后，各自的 <code>get()</code> 拿到的是自己 set 的值，互不干扰。这跟普通变量完全不同——<strong>同一个对象在不同的线程中竟然存储了不同的值</strong>。</p>
+
+  <h3>10.2 ThreadLocal 与普通变量的本质区别</h3>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>变量类型</th><th>作用域</th><th>线程安全？</th><th>生命周期</th><th>典型场景</th></tr></thead>
+      <tbody>
+        <tr><td><strong>局部变量</strong><br><code>void foo() { int x = 1; }</code></td><td>方法栈帧内，每个线程调用方法时在<strong>自己栈</strong>上分配</td><td style="color:var(--green);">✅ 安全</td><td>方法执行完即销毁</td><td>临时计算结果</td></tr>
+        <tr><td><strong>实例变量</strong><br><code>class A { int x; }</code></td><td>对象在堆上，所有访问该对象的线程<strong>共享</strong>同一份</td><td style="color:var(--red);">❌ 不安全</td><td>跟着对象走，对象被 GC 才销毁</td><td>对象的状态属性</td></tr>
+        <tr><td><strong>静态变量</strong><br><code>static int x;</code></td><td>类在方法区，<strong>全局唯一</strong>，所有线程共享</td><td style="color:var(--red);">❌ 不安全</td><td>类加载到卸载（基本=应用生命周期）</td><td>全局配置、计数器</td></tr>
+        <tr><td><strong>ThreadLocal</strong><br><code>ThreadLocal&lt;T&gt; tl</code></td><td>tl 对象本身是共享的，但 tl 内部通过 Thread → ThreadLocalMap 让<strong>每个线程存自己的副本</strong></td><td style="color:var(--green);">✅ 安全</td><td>跟着线程走，线程销毁才清理（或手动 remove）</td><td>数据库连接、Session、Request 上下文</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout">
+    <strong>一句话总结：</strong>普通变量是"线程去共享内存里读写同一个地址"，ThreadLocal 是"线程随身带了一个 HashMap，ThreadLocal 对象只是 key，值存在自己的 HashMap 里"。
+  </div>
+
+  <h3>10.3 隔离机制：同一个 ThreadLocal 对象如何在不同线程中存储不同值？</h3>
+
+  <p>核心原理：<strong>每个 Thread 内部都有一个 ThreadLocalMap</strong>，ThreadLocal 对象只充当这个 Map 的 key。</p>
+
+  <div class="diagram">
+<strong>完整的 ThreadLocal 数据结构：</strong>
+
+    ThreadLocal tl          Thread-1                    Thread-2
+   (全局唯一对象)           ┌─────────────────┐        ┌─────────────────┐
+       │                    │ threadLocals    │        │ threadLocals    │
+       │                    │ (ThreadLocalMap) │        │ (ThreadLocalMap)│
+       │                    │ ┌──────┬──────┐ │        │ ┌──────┬──────┐ │
+       ├────────────────────→││Entry0│"小明"│ │        │ │Entry0│"小红"│ │
+       │                    │ │key=tl│value │ │        │ │key=tl│value │ │
+       │                    │ └──────┴──────┘ │        │ └──────┴──────┘ │
+       │                    └─────────────────┘        └─────────────────┘
+
+    <strong>关键：</strong>
+    • ThreadLocal 对象 tl 本身 → 存储在堆上，所有线程共享
+    • tl.set(value) → 取得当前线程 → 取得当前线程的 threadLocals → 以 tl 为 key 存 value
+    • tl.get()    → 取得当前线程 → 取得当前线程的 threadLocals → 以 tl 为 key 取 value
+  </div>
+
+  <h4>源码层面：set / get 到底做了什么？</h4>
+
+  <pre><span class="co">// ThreadLocal.set() 源码（简化）</span>
+<span class="kw">public</span> <span class="tp">void</span> <span class="fn">set</span>(T value) {
+    Thread t = Thread.<span class="fn">currentThread</span>();              <span class="co">// ① 获取当前线程</span>
+    ThreadLocalMap map = <span class="fn">getMap</span>(t);                  <span class="co">// ② 获取当前线程的 ThreadLocalMap</span>
+    <span class="kw">if</span> (map != <span class="kw">null</span>)
+        map.<span class="fn">set</span>(<span class="kw">this</span>, value);                      <span class="co">// ③ 以 this(ThreadLocal 对象) 为 key 存入</span>
+    <span class="kw">else</span>
+        <span class="fn">createMap</span>(t, value);                        <span class="co">// ④ 第一次用，先创建 ThreadLocalMap</span>
+}
+
+<span class="kw">public</span> T <span class="fn">get</span>() {
+    Thread t = Thread.<span class="fn">currentThread</span>();              <span class="co">// ① 获取当前线程</span>
+    ThreadLocalMap map = <span class="fn">getMap</span>(t);                  <span class="co">// ② 获取当前线程的 ThreadLocalMap</span>
+    <span class="kw">if</span> (map != <span class="kw">null</span>) {
+        ThreadLocalMap.Entry e = map.<span class="fn">getEntry</span>(<span class="kw">this</span>); <span class="co">// ③ 以 this 为 key 查找</span>
+        <span class="kw">if</span> (e != <span class="kw">null</span>)
+            <span class="kw">return</span> (T) e.value;                   <span class="co">// ④ 返回找到的 value</span>
+    }
+    <span class="kw">return</span> <span class="fn">setInitialValue</span>();                     <span class="co">// ⑤ 没找到，返回初始值</span>
+}
+
+<span class="co">// getMap 极其简单：直接返回 Thread 对象的 threadLocals 字段</span>
+ThreadLocalMap <span class="fn">getMap</span>(Thread t) {
+    <span class="kw">return</span> t.threadLocals;   <span class="co">// 每个线程自己持有的 Map</span>
+}</pre>
+
+  <div class="callout">
+    <strong>所以隔离的秘密就在 <code>Thread.currentThread()</code>：</strong><br>
+    · 同一个 ThreadLocal.set(value) 被线程1调用 → currentThread()=线程1 → 存进线程1的 Map<br>
+    · 同一个 ThreadLocal.set(value) 被线程2调用 → currentThread()=线程2 → 存进线程2的 Map<br>
+    · 存的是不同的 Map，自然互不影响！
+  </div>
+
+  <h3>10.4 内部实现：ThreadLocalMap 的数据结构</h3>
+
+  <p>ThreadLocalMap 不是用 JDK 的标准 HashMap，而是自己实现的一个简易 Map：</p>
+
+  <div class="diagram label">
+<strong>ThreadLocalMap 结构：</strong>
+
+  内部使用 Entry[] 数组（初始容量 16，扩容阈值 2/3）
+
+  Entry 继承自 WeakReference：
+  ┌────────────────────────────────┐
+  │  Entry                          │
+  │  • referent → ThreadLocal 对象  │  ← 弱引用（key）
+  │  • value    → 线程私有的数据    │  ← 强引用
+  └────────────────────────────────┘
+
+  <strong>解决 hash 冲突的方式：开放地址法（线性探测）</strong>
+  冲突后 index = (index + 1) % len，直到找到空位
+  （不同于 HashMap 的链表法/红黑树）
+  </div>
+
+  <h3>10.5 内存泄漏问题 —— 深度剖析</h3>
+
+  <h4>第一步：理解"为什么 key 要用弱引用"</h4>
+
+  <p>假如 key 是<strong>强引用</strong>（即 Entry 持有的不是 WeakReference，而是直接引用 ThreadLocal 对象）：</p>
+
+  <div class="diagram label">
+<strong>假设 key 是强引用：</strong>
+
+  代码：
+  <span class="kw">public</span> <span class="kw">void</span> <span class="fn">handleRequest</span>() {
+      ThreadLocal&lt;Context&gt; tl = <span class="kw">new</span> ThreadLocal&lt;&gt;();
+      tl.<span class="fn">set</span>(context);
+      <span class="co">// 业务逻辑...</span>
+  }  <span class="co">// ← 方法结束，局部变量 tl 销毁</span>
+
+  方法结束后：
+    栈上的 tl 引用 → 销毁 ✅
+    堆上的 ThreadLocal 对象  ← 还在！被 Entry（强引用）引用着
+    → ThreadLocal 永远无法被 GC → 泄漏！
+
+  <strong>如果每次请求 new 一个 ThreadLocal，又不 remove → 泄漏日积月累</strong>
+  </div>
+
+  <p>所以<strong> key 用弱引用的好处</strong>：当 ThreadLocal 对象的外部强引用消失后，GC 至少能回收 key（即 ThreadLocal 对象本身），不会导致 ThreadLocal 对象无限堆积。</p>
+
+  <h4>第二步：但光回收 key 还不够 —— value 仍然泄漏</h4>
+
+  <p>这就是 <strong>ThreadLocal 内存泄漏的核心矛盾</strong>：</p>
+
+  <div class="diagram label">
+<strong>内存泄漏的完整链条：</strong>
+
+  <span class="co">阶段 ①：正常使用</span>
+  ┌─────────────┐
+  │ ThreadLocalMap│
+  │ ┌───────────┐ │
+  │ │ Entry     │ │
+  │ │ key → [TL对象] ← 外部强引用（栈上的 tl 变量）
+  │ │ value→ [数据] │
+  │ └───────────┘ │
+  └─────────────┘
+
+  <span class="co">阶段 ②：外部强引用断开（tl = null 或方法结束）</span>
+  ┌─────────────┐
+  │ ThreadLocalMap│
+  │ ┌───────────┐ │
+  │ │ Entry     │ │
+  │ │ key → [TL对象] ← 只剩弱引用！GC 下次就回收
+  │ │ value→ [数据]  │
+  │ └───────────┘ │
+  └─────────────┘
+
+  <span class="co">阶段 ③：GC 发生后</span>
+  ┌─────────────┐
+  │ ThreadLocalMap│
+  │ ┌───────────┐ │
+  │ │ Entry     │ │
+  │ │ key → <span class="red">null</span>  │  ← key 被回收了
+  │ │ value→ [数据]  │  ← <span class="red">但 value 依然被 Entry 强引用！无法回收！</span>
+  │ └───────────┘ │
+  └─────────────┘
+
+  <span class="co">阶段 ④：线程池场景 —— 致命一击</span>
+  普通线程：线程执行完 → 销毁 → ThreadLocalMap 被回收 → value 跟着回收 ✅
+  <span class="red">线程池线程：线程一直存活 → ThreadLocalMap 一直存在</span>
+              → key=null 的 Entry 越来越多 → 内存持续增长 → OOM
+  </div>
+
+  <div class="callout warn">
+    <strong>所以 ThreadLocal 内存泄漏的根因是：</strong><br>
+    1. Entry 对 key 是弱引用，对 value 是强引用<br>
+    2. key（ThreadLocal 对象）可以被 GC，但 value 不行<br>
+    3. key 被 GC 后变成 null，value 永远无法通过 key 被访问到，但也无法被回收<br>
+    4. 线程池场景下线程不销毁，这些"僵尸" Entry 持续累积
+  </div>
+
+  <h4>第三步：JDK 的"自救"机制 —— 惰性清理</h4>
+
+  <p>JDK 也意识到了这个问题，在 ThreadLocalMap 的 <code>set()</code>、<code>get()</code>、<code>remove()</code> 方法中会触发清理：</p>
+
+  <pre><span class="co">// ThreadLocalMap.getEntry() 内部（简化）</span>
+<span class="kw">private</span> Entry <span class="fn">getEntry</span>(ThreadLocal&lt;?&gt; key) {
+    <span class="tp">int</span> i = key.threadLocalHashCode &amp; (table.length - <span class="num">1</span>);
+    Entry e = table[i];
+    <span class="kw">if</span> (e != <span class="kw">null</span> &amp;&amp; e.get() == key)
+        <span class="kw">return</span> e;                           <span class="co">// 命中</span>
+    <span class="kw">else</span>
+        <span class="kw">return</span> <span class="fn">getEntryAfterMiss</span>(key, i, e); <span class="co">// 未命中 → 触发清理</span>
+}
+
+<span class="co">// getEntryAfterMiss 在遍历过程中遇到 key==null 的 Entry</span>
+<span class="co">// 会调用 expungeStaleEntry(i) 清除它：</span>
+<span class="co">//   1. entry.value = null     → 解除对 value 的强引用</span>
+<span class="co">//   2. table[i] = null        → 清除 Entry 本身</span></pre>
+
+  <div class="callout warn">
+    <strong>但惰性清理并不可靠：</strong><br>
+    只有后续有线程继续调用该 ThreadLocalMap 的 set/get/remove 时才会触发清理。<br>
+    如果某个 ThreadLocal 被废弃后，对应的线程长期没有使用任何 ThreadLocal → 僵尸 Entry 就一直堆着。<strong>所以别指望 JDK 帮你全搞定，自己 remove 才是正道。</strong>
+  </div>
+
+  <h4>第四步：最佳实践</h4>
+
+  <pre><span class="co">// ★ 正确用法一：try-finally 保证 remove</span>
+<span class="tp">ThreadLocal</span>&lt;UserContext&gt; context = <span class="kw">new</span> <span class="tp">ThreadLocal</span>&lt;&gt;();
+<span class="kw">try</span> {
+    context.<span class="fn">set</span>(<span class="kw">new</span> <span class="tp">UserContext</span>(userId));
+    <span class="co">// 执行业务逻辑</span>
+} <span class="kw">finally</span> {
+    context.<span class="fn">remove</span>();  <span class="co">// ★★★ 必须 remove！★★★</span>
+}
+
+<span class="co">// ★ 正确用法二：JDK 21 开始用 AutoCloseable（如果有预览特性）</span>
+<span class="co">// ★ 正确用法三：不要用 static ThreadLocal</span>
+<span class="co">//   static 变量生命周期 = 应用生命周期 → 永远有强引用 → remove 也可能忘</span>
+
+<span class="co">// ★ 正确用法四：如果必须用 static，一定要确保 remove</span>
+<span class="kw">public</span> <span class="kw">class</span> <span class="tp">RequestContextHolder</span> {
+    <span class="kw">private</span> <span class="kw">static</span> <span class="kw">final</span> <span class="tp">ThreadLocal</span>&lt;Context&gt; holder = <span class="kw">new</span> <span class="tp">ThreadLocal</span>&lt;&gt;();
+
+    <span class="kw">public</span> <span class="kw">static</span> <span class="tp">void</span> <span class="fn">set</span>(Context ctx) { holder.<span class="fn">set</span>(ctx); }
+    <span class="kw">public</span> <span class="kw">static</span> Context <span class="fn">get</span>() { <span class="kw">return</span> holder.<span class="fn">get</span>(); }
+    <span class="kw">public</span> <span class="kw">static</span> <span class="tp">void</span> <span class="fn">clear</span>() { holder.<span class="fn">remove</span>(); }  <span class="co">// ← 暴露 remove 方法</span>
+}
+
+<span class="co">// 在 Filter/Interceptor 中 finally 调用 clear()</span></pre>
+
+  <h3>10.6 ThreadLocal 使用场景</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>场景</th><th>说明</th><th>你需要 set/remove 吗？</th></tr></thead>
+      <tbody>
+        <tr><td>Spring 事务管理</td><td>同一个事务中获取的数据库连接是同一个（Connection 存 ThreadLocal）</td><td>框架帮你管好了</td></tr>
+        <tr><td>Request 上下文传递</td><td>Controller → Service → Dao 不需要层层传参，直接从 ThreadLocal 取</td><td style="color:var(--red);">需要！在 Filter 中 finally remove</td></tr>
+        <tr><td>数据库读写分离</td><td>每个线程标记自己用主库还是从库</td><td style="color:var(--red);">需要！</td></tr>
+        <tr><td>链路追踪 TraceID</td><td>一次请求的所有日志带上同一个 TraceID</td><td style="color:var(--red);">需要！</td></tr>
+        <tr><td>SimpleDateFormat</td><td>线程不安全，用 ThreadLocal 每个线程一个实例</td><td>线程池需要 remove / 或用 DateTimeFormatter</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout tip">
+    <strong>替代方案：</strong>如果只是为了避免传参，也可以考虑 <strong>InheritableThreadLocal</strong>（子线程可继承父线程的值），<strong>TransmittableThreadLocal</strong>（阿里的，线程池场景下也能传递上下文）。
+  </div>
+
+  <!-- ==================== 十一、线上排查与实战 ==================== -->
+  <h2 id="s11">十一、线上排查与实战</h2>
+
+  <h3>11.1 CPU 100% 排查</h3>
+  <div class="steps">
+    <div class="step"><code>top -Hp [pid]</code> 找到 CPU 最高的线程 ID</div>
+    <div class="step"><code>printf "%x\n" [tid]</code> 转成 16 进制</div>
+    <div class="step"><code>jstack [pid] | grep -A 20 [hex-tid]</code> 看线程在做什么</div>
+    <div class="step">判断是：死循环、频繁 GC、还是正常高负载</div>
+  </div>
+
+  <h3>11.2 死锁排查</h3>
+  <pre><span class="co"># jstack 输出最后会直接告诉你有没有死锁</span>
+jstack [pid] | grep -A 20 <span class="st">"deadlock"</span>
+
+<span class="co"># 或者用 jconsole → 线程面板 → 检测死锁</span></pre>
+
+  <h3>11.3 线程池参数排查（Arthas）</h3>
+  <pre><span class="co"># 查看线程池状态</span>
+arthas&gt; thread --state WAITING | grep pool
+arthas&gt; vmtool --action getInstances --className java.util.concurrent.ThreadPoolExecutor
+
+<span class="co"># 关键指标：</span>
+<span class="co"># activeCount > corePoolSize → 任务在排队</span>
+<span class="co"># queue.size 持续增长 → 处理速度跟不上</span>
+<span class="co"># rejectedCount > 0 → 队列满了，触发了拒绝策略</span></pre>
+
+  <!-- ==================== 十二、面试速记 ==================== -->
+  <h2 id="s12">十二、阿里面试真题速记</h2>
+  <div class="qa-grid">
+    <div class="qa-card">
+      <div class="q">synchronized 锁升级过程？</div>
+      <div class="a">无锁 → 偏向锁（同一线程）→ 轻量级锁（CAS 自旋）→ 重量级锁（OS mutex）。MarkWord 中的锁标志位记录当前状态。偏向锁不释放，下次同一线程来直接获取；轻量级通过 CAS 自旋，失败 10 次升级。</div>
+    </div>
+    <div class="qa-card">
+      <div class="q">AQS 原理？</div>
+      <div class="a">volatile int state + FIFO 双向队列（CLH 变种）。获取锁时 CAS 改 state，失败后入队自旋/阻塞；释放时唤醒后继节点。ReentrantLock、Semaphore、CountDownLatch 全部基于此。</div>
+    </div>
+    <div class="qa-card">
+      <div class="q">线程池 7 大参数和 4 种拒绝策略？</div>
+      <div class="a">corePoolSize / maximumPoolSize / keepAliveTime / unit / workQueue / threadFactory / handler。拒绝：Abort(抛异常)、CallerRuns(调用者执行)、Discard(丢弃)、DiscardOldest(丢弃最旧)。</div>
+    </div>
+    <div class="qa-card">
+      <div class="q">线程池工作流程？</div>
+      <div class="a">corePoolSize 满了 → 入队列 → 队列满了 → 创建到 maxPoolSize → maxPoolSize 还满 → 拒绝策略。非核心线程空闲超过 keepAliveTime 则回收。</div>
+    </div>
+    <div class="qa-card">
+      <div class="q">volatile 保证什么？不保证什么？</div>
+      <div class="a">保证：可见性（写立即刷主内存）、有序性（内存屏障禁止重排序）。不保证：原子性（i++ 三步不是原子的）。经典场景：DCL 单例（禁止指令重排序）。</div>
+    </div>
+    <div class="qa-card">
+      <div class="q">ConcurrentHashMap JDK 1.7 vs 1.8？</div>
+      <div class="a">1.7：Segment 分段锁（16 段，ReentrantLock）；1.8：CAS + synchronized 锁链表头节点（单桶），数据结构同 HashMap（数组+链表+红黑树），读完全无锁，扩容多线程协作。</div>
+    </div>
+    <div class="qa-card">
+      <div class="q">ThreadLocal 如何实现线程隔离？</div>
+      <div class="a">每个 Thread 内部有一个 ThreadLocalMap（类似 HashMap）。ThreadLocal.set(value) → 获取当前线程 → 获取其 ThreadLocalMap → 以 this（ThreadLocal 对象）为 key 存入 value。不同线程 set 同一个 TL 对象，写入的是各自线程的 Map，互不干扰。</div>
+    </div>
+    <div class="qa-card">
+      <div class="q">ThreadLocal 内存泄漏原因？怎么解决？</div>
+      <div class="a">ThreadLocalMap.Entry 继承 WeakReference，key 是弱引用、value 是强引用。key 被 GC 回收后变为 null，但 value 在 Entry 中仍是强引用，无法回收。线程池线程不销毁，僵尸 Entry 持续累积。JDK 有惰性清理（set/get/remove 时碰见 key=null 会清理），但不可靠。解决：finally 中 remove()。</div>
+    </div>
+    <div class="qa-card">
+      <div class="q">CountDownLatch vs CyclicBarrier？</div>
+      <div class="a">Latch = 一等多的门闩，countDown 减到 0 后 await 通过，不可复用。Barrier = 多对多的栅栏，人齐了一起冲，可循环使用。</div>
+    </div>
+    <div class="qa-card">
+      <div class="q">ReentrantLock 公平锁 vs 非公平锁？</div>
+      <div class="a">非公平：新来的线程直接 CAS 抢锁，抢不到再排队，吞吐高。公平：严格按队列顺序，先到先得，防止饥饿但上下文切换频繁。默认非公平。</div>
+    </div>
+    <div class="qa-card">
+      <div class="q">CompletableFuture 的核心方法？</div>
+      <div class="a">supplyAsync/runAsync 创建；thenApply/thenAccept/thenRun 链式；thenCombine/thenCompose 组合；allOf/anyOf 并行编排；exceptionally/handle 异常处理。必须传自定义线程池。</div>
+    </div>
+  </div>
+
+  <!-- ==================== FOOTER ==================== -->
+  <div class="doc-footer">
+    <p><strong>推荐阅读</strong></p>
+    <p>
+      《Java 并发编程的艺术》—— 方腾飞 · 理论扎实<br>
+      《Java 并发编程实战》—— Brian Goetz · 工程实践圣经<br>
+      JDK 源码：AQS / ReentrantLock / ThreadPoolExecutor / ConcurrentHashMap
+    </p>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JDK 8 vs JDK 17 vs JDK 21 · 三大 LTS 版本全面对比</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #faf8f5;
+    --surface: #ffffff;
+    --surface2: #f5f0ea;
+    --border: #e3dbd0;
+    --text: #3d3929;
+    --text-dim: #8c8980;
+    --text-bright: #1e1b18;
+    --jdk8: #2d8a4e;
+    --jdk8-bg: rgba(45,138,78,0.06);
+    --jdk8-border: rgba(45,138,78,0.2);
+    --jdk17: #2563eb;
+    --jdk17-bg: rgba(37,99,235,0.06);
+    --jdk17-border: rgba(37,99,235,0.2);
+    --jdk21: #7c3aed;
+    --jdk21-bg: rgba(124,58,237,0.06);
+    --jdk21-border: rgba(124,58,237,0.2);
+    --red: #dc2626;
+    --orange: #b45309;
+    --cyan: #0d9488;
+  }
+
+  body {
+    font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg); color: var(--text);
+    line-height: 1.85; min-height: 100vh;
+  }
+  .container { max-width: 1100px; margin: 0 auto; padding: 40px 24px 80px; }
+
+  /* ---- Header ---- */
+  .doc-header {
+    text-align: center; padding: 60px 0 50px; position: relative;
+  }
+  .doc-header::after {
+    content: ''; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+    width: 120px; height: 3px;
+    background: linear-gradient(90deg, transparent, var(--jdk17), transparent);
+    border-radius: 2px;
+  }
+  .doc-header h1 {
+    font-size: 32px; font-weight: 900; color: var(--text-bright);
+    letter-spacing: -0.5px; margin-bottom: 10px;
+  }
+  .doc-header .ref {
+    font-size: 14px; color: var(--text-dim); font-weight: 300;
+  }
+
+  /* ---- Timeline ---- */
+  .timeline-bar {
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 0 48px; gap: 0; position: relative;
+  }
+  .tl-item {
+    text-align: center; flex: 1; max-width: 220px;
+    padding: 20px 16px; border-radius: 12px; position: relative;
+  }
+  .tl-item.jdk8  { background: var(--jdk8-bg);  border: 2px solid var(--jdk8-border); }
+  .tl-item.jdk17 { background: var(--jdk17-bg); border: 2px solid var(--jdk17-border); }
+  .tl-item.jdk21 { background: var(--jdk21-bg); border: 2px solid var(--jdk21-border); }
+  .tl-item .year {
+    font-family: 'JetBrains Mono', monospace; font-size: 28px; font-weight: 900;
+  }
+  .tl-item.jdk8  .year { color: var(--jdk8); }
+  .tl-item.jdk17 .year { color: var(--jdk17); }
+  .tl-item.jdk21 .year { color: var(--jdk21); }
+  .tl-item .name {
+    font-size: 15px; font-weight: 700; color: var(--text-bright); margin-top: 4px;
+  }
+  .tl-item .lts-tag {
+    display: inline-block; padding: 2px 10px; border-radius: 12px;
+    font-size: 11px; font-weight: 700; letter-spacing: 1px; margin-top: 6px;
+    background: var(--orange); color: #fff;
+  }
+  .tl-item .desc {
+    font-size: 12px; color: var(--text-dim); margin-top: 6px; line-height: 1.6;
+  }
+  .tl-arrow {
+    font-size: 24px; color: var(--border); flex-shrink: 0; margin: 0 -8px;
+    margin-bottom: 30px;
+  }
+
+  /* ---- Section headings ---- */
+  h2 {
+    font-size: 24px; font-weight: 700; color: var(--text-bright);
+    margin: 52px 0 22px; padding-bottom: 10px; border-bottom: 2px solid var(--border);
+  }
+  h3 {
+    font-size: 18px; font-weight: 600; color: var(--text-bright);
+    margin: 32px 0 14px;
+  }
+
+  /* ---- Feature Grid ---- */
+  .feature-grid {
+    display: grid;
+    grid-template-columns: 140px 1fr 1fr 1fr;
+    gap: 0; margin: 16px 0 28px;
+    border: 1px solid var(--border); border-radius: 12px;
+    overflow: hidden; font-size: 13px;
+  }
+  .feature-grid .fh {
+    background: var(--surface2); font-weight: 700; color: var(--text-bright);
+    padding: 12px 14px; border-bottom: 1px solid var(--border); text-align: center;
+    font-size: 14px;
+  }
+  .feature-grid .fh.cat { text-align: left; }
+  .feature-grid .fh.jdk8  { color: var(--jdk8); }
+  .feature-grid .fh.jdk17 { color: var(--jdk17); }
+  .feature-grid .fh.jdk21 { color: var(--jdk21); }
+  .feature-grid .fc {
+    padding: 10px 14px; border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  .feature-grid .fc.cat {
+    font-weight: 600; color: var(--text-bright);
+    background: rgba(0,0,0,0.015); white-space: nowrap;
+  }
+  .feature-grid .fc.yes { color: var(--jdk8); font-weight: 500; }
+  .feature-grid .fc.no  { color: var(--text-dim); }
+  .feature-grid .fc.new {
+    font-weight: 700;
+  }
+  .feature-grid .fc.new.jdk8  { color: var(--jdk8); }
+  .feature-grid .fc.new.jdk17 { color: var(--jdk17); }
+  .feature-grid .fc.new.jdk21 { color: var(--jdk21); }
+
+  /* ---- Hero Banner ---- */
+  .hero-banner {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px; margin: 20px 0 32px;
+  }
+  .hero-card {
+    border-radius: 14px; padding: 24px 20px; text-align: center;
+    position: relative; overflow: hidden;
+  }
+  .hero-card.jdk8  { background: var(--jdk8-bg);  border: 2px solid var(--jdk8-border); }
+  .hero-card.jdk17 { background: var(--jdk17-bg); border: 2px solid var(--jdk17-border); }
+  .hero-card.jdk21 { background: var(--jdk21-bg); border: 2px solid var(--jdk21-border); }
+  .hero-card .icon {
+    font-size: 40px; margin-bottom: 12px; display: block;
+  }
+  .hero-card .title {
+    font-size: 20px; font-weight: 900; margin-bottom: 6px;
+  }
+  .hero-card.jdk8  .title { color: var(--jdk8); }
+  .hero-card.jdk17 .title { color: var(--jdk17); }
+  .hero-card.jdk21 .title { color: var(--jdk21); }
+  .hero-card .slogan {
+    font-size: 13px; color: var(--text-dim); margin-bottom: 14px;
+  }
+  .hero-card .killer {
+    display: inline-block; padding: 5px 14px; border-radius: 20px;
+    font-size: 12px; font-weight: 700;
+  }
+  .hero-card.jdk8 .killer {
+    background: var(--jdk8); color: #fff;
+  }
+  .hero-card.jdk17 .killer {
+    background: var(--jdk17); color: #fff;
+  }
+  .hero-card.jdk21 .killer {
+    background: var(--jdk21); color: #fff;
+  }
+
+  /* ---- Callouts ---- */
+  .callout {
+    background: rgba(37, 99, 235, 0.06); border-left: 4px solid var(--jdk17);
+    padding: 14px 18px; border-radius: 0 8px 8px 0; margin: 14px 0; font-size: 14px;
+  }
+  .callout.warn {
+    background: rgba(220, 38, 38, 0.06); border-left-color: var(--red);
+  }
+  .callout.tip {
+    background: rgba(45, 138, 78, 0.06); border-left-color: var(--jdk8);
+  }
+  .callout strong { color: var(--text-bright); }
+
+  /* ---- Code ---- */
+  code {
+    font-family: 'JetBrains Mono', monospace; background: var(--surface2);
+    padding: 2px 6px; border-radius: 4px; font-size: 13px; color: var(--red);
+  }
+  pre {
+    background: #1e1b18; color: #e8e4dc; padding: 16px 20px;
+    border-radius: 10px; overflow-x: auto;
+    font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.7;
+    margin: 12px 0; border: 1px solid #3d3929;
+  }
+  pre .co { color: #546e7a; }
+  pre .kw { color: #c792ea; }
+  pre .tp { color: #ffcb6b; }
+  pre .st { color: #c3e88d; }
+  pre .nu { color: #f78c6c; }
+  pre .an { color: #89ddff; }
+
+  /* ---- Side-by-side code ---- */
+  .code-compare {
+    display: grid;
+    grid-template-columns: 2fr 1.5fr;
+    gap: 14px; margin: 14px 0;
+  }
+  .code-compare .old {
+    background: rgba(220, 38, 38, 0.03); border: 1px solid rgba(220, 38, 38, 0.15);
+    border-radius: 10px; overflow: hidden;
+  }
+  .code-compare .new {
+    background: rgba(45, 138, 78, 0.03); border: 1px solid rgba(45, 138, 78, 0.15);
+    border-radius: 10px; overflow: hidden;
+  }
+  .code-compare .label {
+    padding: 8px 14px; font-size: 11px; font-weight: 700; font-family: 'JetBrains Mono', monospace;
+  }
+  .code-compare .old .label { background: rgba(220, 38, 38, 0.08); color: var(--red); }
+  .code-compare .new .label { background: rgba(45, 138, 78, 0.08); color: var(--jdk8); }
+  .code-compare pre {
+    margin: 0; border: none; background: transparent; color: var(--text);
+    font-size: 11px; padding: 10px 14px;
+  }
+
+  /* ---- GC cards ---- */
+  .gc-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px; margin: 16px 0 24px;
+  }
+  .gc-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 20px;
+  }
+  .gc-card h4 {
+    font-size: 16px; font-weight: 700; color: var(--text-bright); margin-bottom: 12px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .gc-card h4 .dot {
+    display: inline-block; width: 10px; height: 10px; border-radius: 50%;
+  }
+  .gc-card.jdk8  h4 .dot { background: var(--jdk8); }
+  .gc-card.jdk17 h4 .dot { background: var(--jdk17); }
+  .gc-card.jdk21 h4 .dot { background: var(--jdk21); }
+  .gc-card .gcs {
+    display: flex; flex-wrap: wrap; gap: 6px;
+  }
+  .gc-card .gcs span {
+    padding: 3px 10px; border-radius: 6px; font-size: 12px;
+    font-family: 'JetBrains Mono', monospace; background: var(--surface2);
+  }
+  .gc-card .gcs span.highlight {
+    font-weight: 700;
+  }
+  .gc-card.jdk8  .gcs span.highlight { background: var(--jdk8-bg); color: var(--jdk8); }
+  .gc-card.jdk17 .gcs span.highlight { background: var(--jdk17-bg); color: var(--jdk17); }
+  .gc-card.jdk21 .gcs span.highlight { background: var(--jdk21-bg); color: var(--jdk21); }
+  .gc-card .note {
+    font-size: 12px; color: var(--text-dim); margin-top: 12px; line-height: 1.7;
+  }
+
+  /* ---- Virtual Thread diagram ---- */
+  .vt-diagram {
+    background: var(--surface); border: 2px solid var(--jdk21-border);
+    border-radius: 14px; padding: 28px 24px; margin: 18px 0; text-align: center;
+  }
+  .vt-diagram h4 { font-size: 16px; color: var(--jdk21); margin-bottom: 18px; }
+  .vt-fork {
+    font-family: 'JetBrains Mono', monospace; font-size: 12px;
+    display: inline-block; background: var(--surface2);
+    padding: 8px 16px; border-radius: 6px; margin: 4px;
+  }
+  .vt-fork.vt {
+    background: var(--jdk21-bg); border: 1px solid var(--jdk21-border);
+    color: var(--jdk21); font-weight: 700;
+  }
+  .vt-fork.pt {
+    border: 1px dashed var(--border); color: var(--text-dim);
+  }
+
+  /* ---- Table ---- */
+  .table-wrap { overflow-x: auto; margin: 14px 0 22px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 600px; }
+  thead th {
+    background: var(--surface2); padding: 10px 14px; border: 1px solid var(--border);
+    text-align: left; font-weight: 600; color: var(--text-bright);
+  }
+  tbody td { padding: 10px 14px; border: 1px solid var(--border); vertical-align: top; }
+  tbody tr:nth-child(even) { background: rgba(0,0,0,0.012); }
+
+  /* ---- Decision guide ---- */
+  .decision {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 20px 0;
+  }
+  .decision-card {
+    background: var(--surface); border-radius: 12px; padding: 20px;
+    text-align: center;
+  }
+  .decision-card.jdk8  { border-top: 4px solid var(--jdk8); }
+  .decision-card.jdk17 { border-top: 4px solid var(--jdk17); }
+  .decision-card.jdk21 { border-top: 4px solid var(--jdk21); }
+  .decision-card .rec { font-size: 18px; font-weight: 900; color: var(--text-bright); margin-bottom: 4px; }
+  .decision-card .sub  { font-size: 13px; color: var(--text-dim); margin-bottom: 12px; }
+  .decision-card .tags { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+  .decision-card .tags span {
+    padding: 3px 10px; border-radius: 6px; font-size: 11px; background: var(--surface2);
+  }
+
+  /* ---- Footer ---- */
+  .doc-footer {
+    margin-top: 60px; padding: 30px 0; border-top: 1px solid var(--border);
+    color: var(--text-dim); font-size: 13px; text-align: center;
+  }
+
+  @media (max-width: 768px) {
+    .doc-header h1 { font-size: 22px; }
+    .timeline-bar { flex-direction: column; gap: 12px; }
+    .tl-arrow { transform: rotate(90deg); }
+    .hero-banner { grid-template-columns: 1fr; }
+    .feature-grid { font-size: 11px; }
+    .feature-grid { grid-template-columns: 100px 1fr 1fr 1fr; }
+    .code-compare { grid-template-columns: 1fr; }
+    .gc-grid { grid-template-columns: 1fr; }
+    .decision { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- ==================== HEADER ==================== -->
+  <div class="doc-header">
+    <h1>JDK 8 vs JDK 17 vs JDK 21 · 三大 LTS 版本全面对比</h1>
+    <p class="ref">从语法特性 / JVM 性能 / GC 演进 / 生产选型 四大维度逐一拆解</p>
+  </div>
+
+  <!-- ==================== TIMELINE ==================== -->
+  <div class="timeline-bar">
+    <div class="tl-item jdk8">
+      <div class="year">2014</div>
+      <div class="name">JDK 8</div>
+      <span class="lts-tag">LTS</span>
+      <div class="desc">Lambda + Stream<br>改变了 Java 编程范式<br>市场份额最高的版本</div>
+    </div>
+    <div class="tl-arrow">→</div>
+    <div class="tl-item jdk17">
+      <div class="year">2021</div>
+      <div class="name">JDK 17</div>
+      <span class="lts-tag">LTS</span>
+      <div class="desc">Records / 密封类<br>模式匹配 / 文本块<br>现代化 Java 的基线</div>
+    </div>
+    <div class="tl-arrow">→</div>
+    <div class="tl-item jdk21">
+      <div class="year">2023</div>
+      <div class="name">JDK 21</div>
+      <span class="lts-tag">LTS</span>
+      <div class="desc">虚拟线程 / 分代 ZGC<br>结构化并发 / Record模式<br>高并发的范式革命</div>
+    </div>
+  </div>
+
+  <!-- ==================== HERO BANNER ==================== -->
+  <div class="hero-banner">
+    <div class="hero-card jdk8">
+      <span class="icon">☕</span>
+      <div class="title">JDK 8</div>
+      <div class="slogan">稳定、老牌、占有率最高</div>
+      <span class="killer">Lambda + Stream</span>
+    </div>
+    <div class="hero-card jdk17">
+      <span class="icon">🚀</span>
+      <div class="title">JDK 17</div>
+      <div class="slogan">现代化、安全、Spring Boot 3 要求</div>
+      <span class="killer">Records + 密封类</span>
+    </div>
+    <div class="hero-card jdk21">
+      <span class="icon">⚡</span>
+      <div class="title">JDK 21</div>
+      <div class="slogan">高并发革命、重量级新特性</div>
+      <span class="killer">虚拟线程 (Loom)</span>
+    </div>
+  </div>
+
+  <!-- ==================== 一、基础信息速览 ==================== -->
+  <h2>一、基础信息速览</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>维度</th><th style="color:var(--jdk8);">JDK 8</th><th style="color:var(--jdk17);">JDK 17</th><th style="color:var(--jdk21);">JDK 21</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>发布时间</td><td>2014.03</td><td>2021.09</td><td>2023.09</td>
+        </tr>
+        <tr>
+          <td>LTS？</td><td style="color:var(--jdk8);font-weight:700;">是（到 2030+）</td><td style="color:var(--jdk17);font-weight:700;">是（到 2029+）</td><td style="color:var(--jdk21);font-weight:700;">是（到 2031+）</td>
+        </tr>
+        <tr>
+          <td>市场占有率</td><td style="color:var(--red);">~40%（仍最高）</td><td>~30%（快速增长）</td><td>~15%（新项目首选）</td>
+        </tr>
+        <tr>
+          <td>Spring Boot 兼容</td><td>2.x 全系列</td><td>3.0+ 必须 JDK 17+</td><td>3.2+ 支持虚拟线程</td>
+        </tr>
+        <tr>
+          <td>Oracle 免费策略</td><td style="color:var(--red);">需付费（生产→Oracle JDK）</td><td style="color:var(--jdk17);">免费（NFTC 协议）</td><td style="color:var(--jdk21);">免费（NFTC 协议）</td>
+        </tr>
+        <tr>
+          <td>推荐使用方</td><td>Oracle JDK → <strong style="color:var(--red);">要付费</strong></td><td>OpenJDK 发行版</td><td>OpenJDK 发行版</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout warn">
+    <strong>关键提醒：</strong>Oracle JDK 8u211 之后用于生产环境需购买商业许可。大多数公司已迁移到 OpenJDK 发行版本（Adoptium / Azul Zulu / 阿里 Dragonwell）。
+  </div>
+
+  <!-- ==================== 二、语法特性对比 ==================== -->
+  <h2>二、语法特性全景对比</h2>
+
+  <div class="feature-grid">
+    <!-- Header row -->
+    <div class="fh cat">特性</div>
+    <div class="fh jdk8">JDK 8</div>
+    <div class="fh jdk17">JDK 17</div>
+    <div class="fh jdk21">JDK 21</div>
+
+    <!-- Lambda & Stream -->
+    <div class="fc cat">Lambda 表达式</div>
+    <div class="fc new jdk8">✅ JDK 8 引入</div>
+    <div class="fc yes">✅ 继承</div>
+    <div class="fc yes">✅ 继承</div>
+
+    <div class="fc cat">Stream API</div>
+    <div class="fc new jdk8">✅ JDK 8 引入</div>
+    <div class="fc yes">✅ + toList() 增强</div>
+    <div class="fc yes">✅ 继承</div>
+
+    <div class="fc cat">Optional</div>
+    <div class="fc new jdk8">✅ JDK 8 引入</div>
+    <div class="fc yes">✅ + orElseThrow()</div>
+    <div class="fc yes">✅ 继承</div>
+
+    <div class="fc cat">新的日期时间 API</div>
+    <div class="fc new jdk8">✅ java.time</div>
+    <div class="fc yes">✅ 继承</div>
+    <div class="fc yes">✅ 继承</div>
+
+    <div class="fc cat">接口默认方法</div>
+    <div class="fc new jdk8">✅ JDK 8 引入</div>
+    <div class="fc yes">✅ 继承</div>
+    <div class="fc yes">✅ 继承</div>
+
+    <!-- Records -->
+    <div class="fc cat">Record 类</div>
+    <div class="fc no">❌ 无</div>
+    <div class="fc new jdk17">✅ JDK 14 预览 → 16 正式</div>
+    <div class="fc yes">✅ + Record 模式</div>
+
+    <div class="fc cat">Record 模式匹配</div>
+    <div class="fc no">❌ 无</div>
+    <div class="fc no">❌ 无</div>
+    <div class="fc new jdk21">✅ JDK 21 引入</div>
+
+    <!-- Sealed Classes -->
+    <div class="fc cat">密封类 (Sealed)</div>
+    <div class="fc no">❌ 无</div>
+    <div class="fc new jdk17">✅ JDK 17 正式</div>
+    <div class="fc yes">✅ 继承</div>
+
+    <!-- Pattern Matching -->
+    <div class="fc cat">instanceof 模式匹配</div>
+    <div class="fc no">❌ 无</div>
+    <div class="fc new jdk17">✅ JDK 16 正式</div>
+    <div class="fc yes">✅ 继承</div>
+
+    <div class="fc cat">switch 模式匹配</div>
+    <div class="fc no">❌ 无</div>
+    <div class="fc no">❌ (预览)</div>
+    <div class="fc new jdk21">✅ JDK 21 正式</div>
+
+    <!-- Switch Expressions -->
+    <div class="fc cat">Switch 表达式</div>
+    <div class="fc no">❌ 无</div>
+    <div class="fc new jdk17">✅ JDK 14 正式</div>
+    <div class="fc yes">✅ 继承</div>
+
+    <!-- Text Blocks -->
+    <div class="fc cat">文本块 (""" """)</div>
+    <div class="fc no">❌ 无</div>
+    <div class="fc new jdk17">✅ JDK 15 正式</div>
+    <div class="fc yes">✅ + String Templates 预览</div>
+
+    <div class="fc cat">字符串模板</div>
+    <div class="fc no">❌ 无</div>
+    <div class="fc no">❌ 无</div>
+    <div class="fc yes">✅ 预览</div>
+
+    <!-- var -->
+    <div class="fc cat">局部变量类型推断 var</div>
+    <div class="fc no">❌ 无</div>
+    <div class="fc new jdk17">✅ JDK 10 引入</div>
+    <div class="fc yes">✅ 继承</div>
+
+    <!-- Sequenced Collections -->
+    <div class="fc cat">有序集合 API</div>
+    <div class="fc no">❌ 无</div>
+    <div class="fc no">❌ 无</div>
+    <div class="fc new jdk21">✅ SequencedCollection</div>
+
+    <!-- Virtual Threads -->
+    <div class="fc cat">虚拟线程</div>
+    <div class="fc no">❌ 无</div>
+    <div class="fc no">❌ 无</div>
+    <div class="fc new jdk21">✅ Project Loom 正式</div>
+
+    <!-- Scoped Values -->
+    <div class="fc cat">作用域值 (替代 TL)</div>
+    <div class="fc no">❌ 无</div>
+    <div class="fc no">❌ 无</div>
+    <div class="fc new jdk21">✅ 预览</div>
+
+    <!-- Structured Concurrency -->
+    <div class="fc cat">结构化并发</div>
+    <div class="fc no">❌ 无</div>
+    <div class="fc no">❌ 无</div>
+    <div class="fc new jdk21">✅ 预览</div>
+
+    <!-- Foreign Function & Memory -->
+    <div class="fc cat">外部函数 & 内存 API</div>
+    <div class="fc no">❌ 无</div>
+    <div class="fc no">❌ (孵化)</div>
+    <div class="fc new jdk21">✅ 预览（替代 JNI）</div>
+  </div>
+
+  <!-- ==================== 三、重点语法代码对比 ==================== -->
+  <h2>三、重点语法 · 代码对比</h2>
+
+  <h3>3.1 Record 类 —— 告别写 getter/setter/equals/hashCode</h3>
+  <div class="code-compare">
+    <div class="old">
+      <div class="label">JDK 8 写法（一个简单的 POJO）</div>
+      <pre><span class="kw">public</span> <span class="kw">class</span> <span class="tp">User</span> {
+    <span class="kw">private</span> <span class="kw">final</span> String name;
+    <span class="kw">private</span> <span class="kw">final</span> <span class="tp">int</span> age;
+
+    <span class="kw">public</span> <span class="tp">User</span>(String name, <span class="tp">int</span> age) {
+        <span class="kw">this</span>.name = name;
+        <span class="kw">this</span>.age = age;
+    }
+    <span class="kw">public</span> String <span class="fn">getName</span>() { <span class="kw">return</span> name; }
+    <span class="kw">public</span> <span class="tp">int</span> <span class="fn">getAge</span>()  { <span class="kw">return</span> age; }
+
+    <span class="co">// equals / hashCode / toString</span>
+    <span class="co">// 至少要 30+ 行代码...</span>
+}</pre>
+    </div>
+    <div class="new">
+      <div class="label">JDK 17+ 一行搞定</div>
+      <pre><span class="kw">public</span> <span class="kw">record</span> <span class="tp">User</span>(String name, <span class="tp">int</span> age) {}
+
+<span class="co">// 自动生成：</span>
+<span class="co">//   构造器、getter、equals</span>
+<span class="co">//   hashCode、toString</span>
+<span class="co">// 自动不可变（final）</span></pre>
+    </div>
+  </div>
+
+  <h3>3.2 模式匹配 —— 告别冗长的 instanceof + 强制转型</h3>
+  <div class="code-compare">
+    <div class="old">
+      <div class="label">JDK 8 写法</div>
+      <pre><span class="kw">if</span> (obj <span class="kw">instanceof</span> <span class="tp">String</span>) {
+    String s = (String) obj;     <span class="co">// 强制转型</span>
+    System.out.<span class="fn">println</span>(s.<span class="fn">length</span>());
+}</pre>
+    </div>
+    <div class="new">
+      <div class="label">JDK 17+ 模式匹配</div>
+      <pre><span class="kw">if</span> (obj <span class="kw">instanceof</span> String s) {  <span class="co">// 直接绑定变量！</span>
+    System.out.<span class="fn">println</span>(s.<span class="fn">length</span>());
+}</pre>
+    </div>
+  </div>
+
+  <h3>3.3 Switch 表达式 + 模式匹配 —— 从"语句"到"表达式"</h3>
+  <div class="code-compare">
+    <div class="old">
+      <div class="label">JDK 8 冗长的 if-else 链</div>
+      <pre>String result;
+<span class="kw">if</span> (obj <span class="kw">instanceof</span> <span class="tp">Integer</span> i) {
+    result = <span class="st">"int: "</span> + i;
+} <span class="kw">else</span> <span class="kw">if</span> (obj <span class="kw">instanceof</span> <span class="tp">String</span> s) {
+    result = <span class="st">"string: "</span> + s;
+} <span class="kw">else</span> {
+    result = <span class="st">"unknown"</span>;
+}</pre>
+    </div>
+    <div class="new">
+      <div class="label">JDK 21 switch 模式匹配</div>
+      <pre>String result = <span class="kw">switch</span> (obj) {
+    <span class="kw">case</span> <span class="tp">Integer</span> i  -&gt; <span class="st">"int: "</span> + i;
+    <span class="kw">case</span> <span class="tp">String</span> s   -&gt; <span class="st">"string: "</span> + s;
+    <span class="kw">case</span> <span class="kw">null</span>        -&gt; <span class="st">"null"</span>;
+    <span class="kw">default</span>          -&gt; <span class="st">"unknown"</span>;
+};</pre>
+    </div>
+  </div>
+
+  <h3>3.4 密封类 —— 限制继承的"可控多态"</h3>
+  <div class="code-compare">
+    <div class="old">
+      <div class="label">JDK 8 —— 无法限制子类</div>
+      <pre><span class="kw">public</span> <span class="kw">abstract</span> <span class="kw">class</span> <span class="tp">Shape</span> {
+    <span class="co">// 任何人/任何模块都可以继承</span>
+    <span class="co">// 无法穷举子类型</span>
+}
+<span class="kw">class</span> <span class="tp">Circle</span>  <span class="kw">extends</span> <span class="tp">Shape</span> { }
+<span class="kw">class</span> <span class="tp">Square</span>  <span class="kw">extends</span> <span class="tp">Shape</span> { }
+<span class="kw">class</span> <span class="tp">Unknown</span> <span class="kw">extends</span> <span class="tp">Shape</span> { } <span class="co">// 不受控</span></pre>
+    </div>
+    <div class="new">
+      <div class="label">JDK 17+ 密封类</div>
+      <pre><span class="kw">public</span> <span class="kw">sealed</span> <span class="kw">class</span> <span class="tp">Shape</span>
+    <span class="kw">permits</span> Circle, Square { }
+
+<span class="kw">final</span> <span class="kw">class</span> <span class="tp">Circle</span> <span class="kw">extends</span> <span class="tp">Shape</span> { }
+<span class="kw">final</span> <span class="kw">class</span> <span class="tp">Square</span> <span class="kw">extends</span> <span class="tp">Shape</span> { }
+
+<span class="co">// 配合 switch 模式匹配</span>
+<span class="co">// 编译器知道你穷举了所有子类型</span>
+<span class="co">// 不需要写 default 分支！</span></pre>
+    </div>
+  </div>
+
+  <!-- ==================== 四、GC 演进 ==================== -->
+  <h2>四、垃圾收集器演进</h2>
+
+  <div class="gc-grid">
+    <div class="gc-card jdk8">
+      <h4><span class="dot"></span> JDK 8</h4>
+      <div class="gcs">
+        <span>Serial</span><span>Parallel</span><span class="highlight">CMS</span><span>G1</span>
+      </div>
+      <div class="note">
+        · 默认 GC：<strong>Parallel</strong>（吞吐量优先）<br>
+        · G1 可用但不够成熟<br>
+        · CMS 已标记 @Deprecated<br>
+        · 无 ZGC、无 Shenandoah<br>
+        · PermGen → Metaspace
+      </div>
+    </div>
+    <div class="gc-card jdk17">
+      <h4><span class="dot"></span> JDK 17</h4>
+      <div class="gcs">
+        <span>Serial</span><span class="highlight">G1</span><span>Parallel</span><span>ZGC</span><span>Shenandoah</span>
+      </div>
+      <div class="note">
+        · 默认 GC：<strong>G1</strong>（均衡延迟与吞吐）<br>
+        · CMS 彻底删除<br>
+        · ZGC 可用（低延迟 &lt;1ms）<br>
+        · Shenandoah 可用<br>
+        · G1 NUMA 感知优化
+      </div>
+    </div>
+    <div class="gc-card jdk21">
+      <h4><span class="dot"></span> JDK 21</h4>
+      <div class="gcs">
+        <span>Serial</span><span class="highlight">G1</span><span>Parallel</span><span class="highlight">分代ZGC</span><span>Shenandoah</span>
+      </div>
+      <div class="note">
+        · 默认 GC：<strong>G1</strong><br>
+        · <strong>分代 ZGC</strong>：正式推出<br>
+          └ 年轻代+老年代分离<br>
+          └ 吞吐提升 10%+<br>
+          └ 暂停 &lt;1ms（Heap ≤ 16TB）
+      </div>
+    </div>
+  </div>
+
+  <h3>GC 选型建议</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>场景</th><th>JDK 8</th><th>JDK 17</th><th>JDK 21</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>高吞吐（批处理/计算）</td>
+          <td style="color:var(--jdk8);">Parallel</td>
+          <td>Parallel</td>
+          <td>Parallel</td>
+        </tr>
+        <tr>
+          <td>低延迟（Web 服务）</td>
+          <td>G1 / CMS</td>
+          <td style="color:var(--jdk17);">G1 / ZGC</td>
+          <td style="color:var(--jdk21);font-weight:700;">分代 ZGC / G1</td>
+        </tr>
+        <tr>
+          <td>超大堆（&gt; 32GB）</td>
+          <td>G1</td>
+          <td style="color:var(--jdk17);">ZGC</td>
+          <td style="color:var(--jdk21);font-weight:700;">分代 ZGC</td>
+        </tr>
+        <tr>
+          <td>极低延迟（&lt; 1ms）</td>
+          <td style="color:var(--red);">做不到</td>
+          <td style="color:var(--jdk17);">ZGC / Shenandoah</td>
+          <td style="color:var(--jdk21);font-weight:700;">分代 ZGC</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ==================== 五、虚拟线程 ==================== -->
+  <h2>五、JDK 21 杀手锏：虚拟线程（Virtual Threads）</h2>
+
+  <h3>5.1 传统线程 vs 虚拟线程</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>维度</th><th>平台线程（Thread）</th><th style="color:var(--jdk21);">虚拟线程（Virtual Thread）</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>本质</td>
+          <td>1:1 映射到 OS 线程</td>
+          <td style="color:var(--jdk21);">JVM 管理的轻量级"协程"</td>
+        </tr>
+        <tr>
+          <td>创建成本</td>
+          <td>~1ms + ~1MB 栈</td>
+          <td style="color:var(--jdk21);">~1μs + 几 KB 栈（可动态伸缩）</td>
+        </tr>
+        <tr>
+          <td>上下文切换</td>
+          <td>用户态 ↔ 内核态</td>
+          <td style="color:var(--jdk21);">纯用户态切换（无内核参与）</td>
+        </tr>
+        <tr>
+          <td>最大数量</td>
+          <td>约 1000-5000（受限于 OS）</td>
+          <td style="color:var(--jdk21);">可达百万级</td>
+        </tr>
+        <tr>
+          <td>阻塞代价</td>
+          <td>线程阻塞 → OS 挂起</td>
+          <td style="color:var(--jdk21);">阻塞时释放底层平台线程，不浪费</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="vt-diagram">
+    <h4>🔧 虚拟线程运行模型</h4>
+    <div style="margin-bottom:16px;color:var(--text-dim);font-size:13px;">
+      大量虚拟线程复用少量平台线程（CPU 核数），阻塞时不占用平台线程
+    </div>
+    <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:6px;max-width:600px;margin:0 auto;">
+      <span class="vt-fork vt">虚拟线程 1</span>
+      <span class="vt-fork vt">虚拟线程 2</span>
+      <span class="vt-fork vt">虚拟线程 3</span>
+      <span class="vt-fork vt">虚拟线程 4</span>
+      <span class="vt-fork vt">虚拟线程 5</span>
+      <span class="vt-fork vt">... x 10万</span>
+    </div>
+    <div style="color:var(--text-dim);margin:14px 0;font-size:13px;">▼ 调度到少量平台线程 ▼</div>
+    <div style="display:flex;justify-content:center;gap:6px;">
+      <span class="vt-fork pt">平台线程 A</span>
+      <span class="vt-fork pt">平台线程 B</span>
+      <span class="vt-fork pt">平台线程 C</span>
+      <span class="vt-fork pt">平台线程 D</span>
+    </div>
+  </div>
+
+  <h3>5.2 代码对比：1 万并发请求</h3>
+  <div class="code-compare">
+    <div class="old">
+      <div class="label">JDK 8 —— 线程池方式</div>
+      <pre><span class="co">// 最多开 200 个线程 (CPU 已打满)</span>
+<span class="kw">var</span> pool = Executors
+    .<span class="fn">newFixedThreadPool</span>(<span class="nu">200</span>);
+
+<span class="kw">for</span> (<span class="tp">int</span> i = <span class="nu">0</span>; i &lt; <span class="nu">10000</span>; i++) {
+    pool.<span class="fn">submit</span>(() -&gt; {
+        <span class="fn">callRemoteAPI</span>();    <span class="co">// IO 阻塞</span>
+    });
+}
+
+<span class="co">// 问题：200 个线程只有 200 个并发</span>
+<span class="co">// 其余 9800 个任务排队等待</span></pre>
+    </div>
+    <div class="new">
+      <div class="label">JDK 21 —— 虚拟线程方式</div>
+      <pre><span class="co">// 每个请求一个虚拟线程</span>
+<span class="kw">try</span> (<span class="kw">var</span> executor = Executors
+        .<span class="fn">newVirtualThreadPerTaskExecutor</span>()) {
+
+    <span class="kw">for</span> (<span class="tp">int</span> i = <span class="nu">0</span>; i &lt; <span class="nu">10000</span>; i++) {
+        executor.<span class="fn">submit</span>(() -&gt; {
+            <span class="fn">callRemoteAPI</span>();  <span class="co">// 阻塞时释放平台线程</span>
+        });
+    }
+}
+
+<span class="co">// 1 万个虚拟线程同时运行！</span>
+<span class="co">// IO 阻塞时自动释放底层平台线程</span>
+<span class="co">// 不需要线程池参数调优</span></pre>
+    </div>
+  </div>
+
+  <div class="callout tip">
+    <strong>虚拟线程最佳场景：</strong>IO 密集型任务（HTTP 请求、数据库查询、消息消费）。它们让"一个请求一个线程"变成现实，线程池调优的痛苦一去不返。
+    <br><br>
+    <strong>不适用场景：</strong>CPU 密集型任务（计算、加密、压缩）。这些场景下虚拟线程的协作式调度反而可能降低吞吐。
+  </div>
+
+  <!-- ==================== 六、结构化并发 ==================== -->
+  <h2>六、JDK 21 结构化并发（预览）</h2>
+  <p>结构化并发的核心思想：<strong>父子任务的边界清晰、生命周期可控、异常传播有迹可循</strong>。</p>
+
+  <div class="code-compare">
+    <div class="old">
+      <div class="label">JDK 8 —— CompletableFuture</div>
+      <pre><span class="kw">public</span> <span class="tp">Response</span> <span class="fn">handle</span>() <span class="kw">throws</span> Exception {
+    <span class="kw">var</span> f1 = CompletableFuture
+        .<span class="fn">supplyAsync</span>(<span class="kw">this</span>::<span class="fn">queryUser</span>);
+    <span class="kw">var</span> f2 = CompletableFuture
+        .<span class="fn">supplyAsync</span>(<span class="kw">this</span>::<span class="fn">queryOrder</span>);
+
+    <span class="co">// f1 失败不会自动取消 f2</span>
+    <span class="co">// f2 还在浪费资源跑</span>
+    <span class="kw">return</span> f1.<span class="fn">thenCombine</span>(f2, ...).<span class="fn">get</span>();
+}</pre>
+    </div>
+    <div class="new">
+      <div class="label">JDK 21 —— 结构化并发</div>
+      <pre><span class="kw">public</span> <span class="tp">Response</span> <span class="fn">handle</span>() <span class="kw">throws</span> Exception {
+    <span class="kw">try</span> (<span class="kw">var</span> scope = <span class="kw">new</span> <span class="tp">StructuredTaskScope</span>
+            .<span class="fn">ShutdownOnFailure</span>()) {
+
+        <span class="kw">var</span> f1 = scope.<span class="fn">fork</span>(<span class="kw">this</span>::<span class="fn">queryUser</span>);
+        <span class="kw">var</span> f2 = scope.<span class="fn">fork</span>(<span class="kw">this</span>::<span class="fn">queryOrder</span>);
+
+        scope.<span class="fn">join</span>();
+        scope.<span class="fn">throwIfFailed</span>();
+        <span class="co">// f1 失败 → f2 自动取消！</span>
+        <span class="kw">return</span> <span class="fn">combine</span>(f1.<span class="fn">get</span>(), f2.<span class="fn">get</span>());
+    } <span class="co">// try-with-resource 自动等待所有子任务</span>
+}</pre>
+    </div>
+  </div>
+
+  <!-- ==================== 七、内存与元空间 ==================== -->
+  <h2>七、内存区域变化</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>内存区域</th><th>JDK 8</th><th>JDK 17</th><th>JDK 21</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>方法区</td>
+          <td style="color:var(--jdk8);">Metaspace（替代 PermGen）</td>
+          <td>Metaspace</td>
+          <td>Metaspace</td>
+        </tr>
+        <tr>
+          <td>Metaspace 上限</td>
+          <td>默认无限制（可 -XX:MaxMetaspaceSize）</td>
+          <td>无限制</td>
+          <td>无限制</td>
+        </tr>
+        <tr>
+          <td>CompressedOops</td>
+          <td>✅（堆 &lt; 32GB）</td>
+          <td>✅</td>
+          <td>✅</td>
+        </tr>
+        <tr>
+          <td>CompressedClassPointers</td>
+          <td>✅ 默认开启</td>
+          <td>✅</td>
+          <td>✅</td>
+        </tr>
+        <tr>
+          <td>CDS (类数据共享)</td>
+          <td>仅 Bootstrap ClassLoader</td>
+          <td style="color:var(--jdk17);">AppCDS — 所有类加载器</td>
+          <td style="color:var(--jdk21);">Dynamic CDS — 运行时自动归档</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ==================== 八、安全性 ==================== -->
+  <h2>八、安全性对比</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>安全特性</th><th>JDK 8</th><th>JDK 17</th><th>JDK 21</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>强封装 JDK 内部 API</td>
+          <td style="color:var(--red);">❌ 随意反射访问 sun.misc.*</td>
+          <td>✅ 默认封装，需 --add-opens</td>
+          <td>✅ 更严格</td>
+        </tr>
+        <tr>
+          <td>TLS 版本</td>
+          <td>TLS 1.2（默认关闭 1.3）</td>
+          <td style="color:var(--jdk17);">TLS 1.3 默认</td>
+          <td>TLS 1.3</td>
+        </tr>
+        <tr>
+          <td>废弃安全算法</td>
+          <td>SHA-1 仍可用</td>
+          <td>SHA-1 证书禁用</td>
+          <td>禁用更多弱算法</td>
+        </tr>
+        <tr>
+          <td>SecurityManager</td>
+          <td>可用</td>
+          <td>标记 @Deprecated</td>
+          <td>标记 @Deprecated</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ==================== 九、从 JDK 8 迁移 ==================== -->
+  <h2>九、从 JDK 8 迁移注意事项</h2>
+
+  <h3>9.1 常见兼容性问题</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>问题</th><th>原因</th><th>解决方案</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><code>sun.misc.Unsafe</code> 不可用</td>
+          <td>JDK 内部 API 被强封装</td>
+          <td>加 JVM 参数 <code>--add-opens java.base/sun.misc=ALL-UNNAMED</code>（短期）；升级依赖（长期）</td>
+        </tr>
+        <tr>
+          <td>反射访问 <code>java.lang</code> 私有字段</td>
+          <td>模块化系统限制</td>
+          <td>加 <code>--add-opens java.base/java.lang=ALL-UNNAMED</code></td>
+        </tr>
+        <tr>
+          <td>Lombok 不兼容</td>
+          <td>旧版本不支持 JDK 17+</td>
+          <td>升级 Lombok ≥ 1.18.22</td>
+        </tr>
+        <tr>
+          <td>Groovy / Kotlin 等</td>
+          <td>可能版本太旧</td>
+          <td>升级到最新版本</td>
+        </tr>
+        <tr>
+          <td>GC 日志格式变化</td>
+          <td>JDK 9+ 统一为 <code>-Xlog:gc</code></td>
+          <td>替换旧的 <code>-XX:+PrintGC</code></td>
+        </tr>
+        <tr>
+          <td>JAXB / javax.annotation 等移除</td>
+          <td>Java EE 模块被移除</td>
+          <td>手动加 Maven 依赖</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout">
+    <strong>迁移检查清单：</strong><br>
+    1. Maven/Gradle 编译 JDK 版本改为 17/21<br>
+    2. 检查所有依赖的兼容性（Lombok / Netty / ASM 等底层库最易出问题）<br>
+    3. 在测试环境验证 GC 表现（尤其从 Parallel → G1）<br>
+    4. 检查 <code>--add-opens</code> 参数是否可以减少（逐步修复）
+  </div>
+
+  <!-- ==================== 十、选型决策 ==================== -->
+  <h2>十、生产环境选型决策指南</h2>
+
+  <div class="decision">
+    <div class="decision-card jdk8">
+      <div class="rec">继续用 JDK 8</div>
+      <div class="sub">如果你符合以下情况</div>
+      <div class="tags">
+        <span>维护老项目</span>
+        <span>中间件不兼容</span>
+        <span>依赖无法升级</span>
+        <span>短期不重构</span>
+        <span>Oracle 要付费</span>
+      </div>
+    </div>
+    <div class="decision-card jdk17">
+      <div class="rec">升级到 JDK 17</div>
+      <div class="sub">如果你符合以下情况</div>
+      <div class="tags">
+        <span>Spring Boot 3.x</span>
+        <span>新项目启动</span>
+        <span>追求代码简洁</span>
+        <span>安全合规要求</span>
+        <span>免费 LTS 支持</span>
+      </div>
+    </div>
+    <div class="decision-card jdk21">
+      <div class="rec">升级到 JDK 21</div>
+      <div class="sub">如果你符合以下情况</div>
+      <div class="tags">
+        <span>高并发 IO 场景</span>
+        <span>微服务网关</span>
+        <span>消息消费应用</span>
+        <span>追求极低延迟</span>
+        <span>分代 ZGC 需求</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout tip">
+    <strong>建议：</strong><br>
+    · <strong>老项目维护</strong> → JDK 8 还够用，但尽早规划升级路径<br>
+    · <strong>新项目启动</strong> → 直接上 <strong>JDK 17</strong>（Spring Boot 3.x 的最低要求）<br>
+    · <strong>高并发/IO 密集</strong> → <strong>JDK 21</strong>（虚拟线程 + 分代 ZGC 是巨大收益）<br>
+    · <strong>中间件选型时</strong>优先考虑 JDK 17/21 兼容性，避免技术债务
+  </div>
+
+  <!-- ==================== FOOTER ==================== -->
+  <div class="doc-footer">
+    <p>JDK 8 稳定可靠但已显老态 · JDK 17 是新项目的保守选择 · JDK 21 是面向未来的激进选择</p>
+    <p style="margin-top:6px;">参考资料：OpenJDK 官方文档 · JEP 索引 · Spring Boot 3.x Migration Guide</p>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>设计模式在 Spring 中的应用</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #faf8f5;
+    --surface: #ffffff;
+    --surface2: #f5f0ea;
+    --border: #e3dbd0;
+    --text: #3d3929;
+    --text-dim: #8c8980;
+    --text-bright: #1e1b18;
+    --primary: #2563eb;
+    --green: #2d8a4e;
+    --orange: #b45309;
+    --purple: #7c3aed;
+    --red: #dc2626;
+    --cyan: #0d9488;
+    --pink: #be185d;
+  }
+
+  body {
+    font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.85;
+    min-height: 100vh;
+  }
+
+  .container { max-width: 1000px; margin: 0 auto; padding: 40px 24px 80px; }
+
+  .toc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px 28px;
+    margin: 0 0 40px;
+  }
+  .toc h3 { font-size: 16px; color: var(--text-bright); margin-bottom: 14px; }
+  .toc ol { columns: 2; column-gap: 24px; padding-left: 20px; font-size: 13px; line-height: 2.2; }
+  .toc ol li a { color: var(--primary); text-decoration: none; }
+  .toc ol li a:hover { text-decoration: underline; }
+
+  .doc-header {
+    text-align: center; padding: 60px 0 50px; position: relative;
+  }
+  .doc-header::after {
+    content: ''; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+    width: 100px; height: 3px;
+    background: linear-gradient(90deg, transparent, var(--primary), transparent);
+    border-radius: 2px;
+  }
+  .doc-header h1 {
+    font-size: 34px; font-weight: 900; color: var(--text-bright);
+    letter-spacing: -0.5px; margin-bottom: 8px;
+  }
+  .doc-header .ref {
+    font-size: 14px; color: var(--text-dim); font-weight: 300;
+  }
+
+  h2 {
+    font-size: 24px; font-weight: 700; color: var(--text-bright);
+    margin: 48px 0 20px; padding-bottom: 10px; border-bottom: 2px solid var(--border);
+  }
+  h3 {
+    font-size: 18px; font-weight: 600; color: var(--text-bright);
+    margin: 32px 0 14px;
+  }
+  h4 {
+    font-size: 15px; font-weight: 600; color: var(--text-bright);
+    margin: 22px 0 10px;
+  }
+  p { margin-bottom: 14px; font-size: 15px; }
+  p strong { color: var(--text-bright); }
+  code {
+    font-family: 'JetBrains Mono', monospace; background: var(--surface2);
+    padding: 2px 6px; border-radius: 4px; font-size: 13px; color: var(--red);
+  }
+
+  pre {
+    background: #1e1b18; color: #e8e4dc; padding: 18px 22px;
+    border-radius: 10px; overflow-x: auto;
+    font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.75;
+    margin: 14px 0; border: 1px solid #3d3929;
+  }
+  pre .co { color: #546e7a; }
+  pre .kw { color: #c792ea; }
+  pre .tp { color: #ffcb6b; }
+  pre .fn { color: #82aaff; }
+  pre .st { color: #c3e88d; }
+  pre .nu { color: #f78c6c; }
+  pre .an { color: #89ddff; }
+  pre .red { color: #f07178; }
+  pre .grn { color: #c3e88d; }
+
+  .table-wrap { overflow-x: auto; margin: 14px 0 22px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 600px; }
+  thead th {
+    background: var(--surface2); padding: 10px 14px; border: 1px solid var(--border);
+    text-align: left; font-weight: 600; color: var(--text-bright);
+  }
+  tbody td { padding: 10px 14px; border: 1px solid var(--border); vertical-align: top; }
+  tbody tr:nth-child(even) { background: rgba(0,0,0,0.015); }
+
+  .callout {
+    background: rgba(37, 99, 235, 0.06); border-left: 4px solid var(--primary);
+    padding: 14px 18px; border-radius: 0 8px 8px 0; margin: 14px 0; font-size: 14px;
+  }
+  .callout.warn {
+    background: rgba(220, 38, 38, 0.06); border-left-color: var(--red);
+  }
+  .callout.tip {
+    background: rgba(45, 138, 78, 0.06); border-left-color: var(--green);
+  }
+  .callout strong { color: var(--text-bright); }
+
+  .diagram {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 18px 22px; margin: 14px 0; font-family: 'JetBrains Mono', monospace;
+    font-size: 13px; line-height: 1.8; text-align: center; white-space: pre;
+  }
+  .diagram.label { text-align: left; }
+  .diagram .red { color: var(--red); }
+  .diagram .grn { color: var(--green); }
+  .diagram .blu { color: var(--primary); }
+  .diagram .org { color: var(--orange); }
+  .diagram .pur { color: var(--purple); }
+
+  /* ---- Pattern card ---- */
+  .pattern-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    margin: 18px 0; overflow: hidden;
+  }
+  .pattern-card .pc-header {
+    padding: 16px 22px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .pattern-card .pc-header .pc-icon {
+    width: 40px; height: 40px; border-radius: 10px; display: flex;
+    align-items: center; justify-content: center; font-size: 20px;
+    flex-shrink: 0;
+  }
+  .pattern-card .pc-header .pc-icon.blue { background: rgba(37,99,235,0.1); color: var(--primary); }
+  .pattern-card .pc-header .pc-icon.green { background: rgba(45,138,78,0.1); color: var(--green); }
+  .pattern-card .pc-header .pc-icon.orange { background: rgba(180,83,9,0.1); color: var(--orange); }
+  .pattern-card .pc-header .pc-icon.purple { background: rgba(124,58,237,0.1); color: var(--purple); }
+  .pattern-card .pc-header .pc-icon.cyan { background: rgba(13,148,136,0.1); color: var(--cyan); }
+  .pattern-card .pc-header .pc-icon.pink { background: rgba(190,24,93,0.1); color: var(--pink); }
+  .pattern-card .pc-header .pc-icon.red { background: rgba(220,38,38,0.1); color: var(--red); }
+  .pattern-card .pc-header h3 { margin: 0; font-size: 17px; border: 0; padding: 0; }
+  .pattern-card .pc-header .pc-badge {
+    margin-left: auto; padding: 3px 10px; border-radius: 12px;
+    font-size: 11px; font-weight: 500; white-space: nowrap;
+  }
+  .pattern-card .pc-header .pc-badge.create { background: rgba(45,138,78,0.08); color: var(--green); }
+  .pattern-card .pc-header .pc-badge.struct { background: rgba(37,99,235,0.08); color: var(--primary); }
+  .pattern-card .pc-header .pc-badge.behave { background: rgba(124,58,237,0.08); color: var(--purple); }
+  .pattern-card .pc-body { padding: 18px 22px; }
+  .pattern-card .pc-body p { margin-bottom: 8px; font-size: 14px; }
+  .pattern-card .pc-body .spring-spot {
+    background: var(--surface2); border-radius: 8px; padding: 12px 16px;
+    margin: 10px 0; font-size: 13px;
+  }
+  .pattern-card .pc-body .spring-spot strong { color: var(--primary); }
+
+  .compare-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 14px 0;
+  }
+  .compare-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 16px 20px;
+  }
+  .compare-card h4 { margin-top: 0; }
+  .compare-card.bad { border-left: 3px solid var(--red); }
+  .compare-card.good { border-left: 3px solid var(--green); }
+
+  .steps { counter-reset: step; margin: 14px 0; }
+  .step {
+    counter-increment: step; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px 18px; margin: 8px 0; font-size: 14px;
+  }
+  .step::before {
+    content: counter(step);
+    display: inline-block; width: 24px; height: 24px;
+    background: var(--primary); color: #fff; border-radius: 50%;
+    text-align: center; line-height: 24px; font-size: 12px; font-weight: 700;
+    margin-right: 12px; flex-shrink: 0;
+  }
+
+  .qa-grid { display: grid; grid-template-columns: 1fr; gap: 10px; margin: 14px 0; }
+  .qa-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px 18px;
+  }
+  .qa-card .q { font-weight: 700; color: var(--text-bright); font-size: 14px; margin-bottom: 4px; }
+  .qa-card .a { font-size: 13px; color: var(--text-dim); }
+
+  .doc-footer {
+    margin-top: 60px; padding: 30px 0; border-top: 1px solid var(--border);
+    color: var(--text-dim); font-size: 13px;
+  }
+
+  @media (max-width: 768px) {
+    .doc-header h1 { font-size: 24px; }
+    h2 { font-size: 20px; }
+    .compare-grid { grid-template-columns: 1fr; }
+    .toc ol { columns: 1; }
+    pre { font-size: 11px; padding: 12px 14px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="doc-header">
+    <h1>设计模式在 Spring 中的应用</h1>
+    <p class="ref">覆盖 Spring 框架中常用的 10 种设计模式：单例 / 工厂 / 代理 / 模板方法 / 观察者 / 策略 / 装饰器 / 责任链 / 适配器 / 建造者</p>
+  </div>
+
+  <div class="toc">
+    <h3>📑 目录</h3>
+    <ol>
+      <li><a href="#s1">单例模式 —— Spring Bean 的默认作用域</a></li>
+      <li><a href="#s2">工厂模式 —— BeanFactory &amp; FactoryBean</a></li>
+      <li><a href="#s3">代理模式 —— AOP 的核心</a></li>
+      <li><a href="#s4">模板方法模式 —— JdbcTemplate / RestTemplate</a></li>
+      <li><a href="#s5">观察者模式 —— ApplicationEvent 事件机制</a></li>
+      <li><a href="#s6">策略模式 —— 资源加载、参数解析、鉴权</a></li>
+      <li><a href="#s7">装饰器模式 —— BeanPostProcessor 包装链</a></li>
+      <li><a href="#s8">责任链模式 —— Filter / Interceptor</a></li>
+      <li><a href="#s9">适配器模式 —— HandlerAdapter / AdvisorAdapter</a></li>
+      <li><a href="#s10">建造者模式 —— RequestMappingInfo / BeanDefinitionBuilder</a></li>
+      <li><a href="#s11">面试速记</a></li>
+    </ol>
+  </div>
+
+  <!-- ==================== 概述 ==================== -->
+  <div class="callout">
+    <strong>为什么要学"设计模式在 Spring 中的应用"？</strong><br>
+    1. 面试高频：Spring 用自己的代码演示了几乎所有经典设计模式，考察你对 Spring 框架源码级理解<br>
+    2. 学以致用：看 Spring 怎么用这些模式，能帮你写出更好的代码<br>
+    3. 阅读源码的钥匙：不理解这些模式，看 Spring 源码时会觉得很绕
+  </div>
+
+  <!-- ==================== 一、单例模式 ==================== -->
+  <div class="pattern-card">
+    <div class="pc-header">
+      <div class="pc-icon blue">1</div>
+      <h3>单例模式 (Singleton)</h3>
+      <span class="pc-badge create">创建型</span>
+    </div>
+    <div class="pc-body">
+      <p><strong>定义：</strong>一个类在整个 JVM 中只有一个实例，并提供全局访问点。</p>
+
+      <pre style="margin:8px 0;"><span class="co">// Spring 的"单例"和 GOF 的单例不同：</span>
+<span class="co">// GOF 单例：一个 ClassLoader 下只有一个实例</span>
+<span class="co">// Spring 单例：一个 IoC 容器中，同一个 beanName 只有一个实例</span></pre>
+
+      <div class="diagram label" style="margin:8px 0;">
+<strong>Spring 单例 Bean 的创建流程：</strong>
+
+  getBean("userService")
+     │
+     ▼
+  DefaultSingletonBeanRegistry 中的三级缓存：
+  ┌────────────────────────────────────────────┐
+  │ ① singletonObjects     (一级缓存, 成品池)     │  ← 完全初始化的 Bean
+  │ ② earlySingletonObjects(二级缓存, 半成品池)   │  ← 已实例化, 未注入属性的 Bean
+  │ ③ singletonFactories   (三级缓存, 工厂池)     │  ← 可生成半成品的 ObjectFactory
+  └────────────────────────────────────────────┘
+  (解决循环依赖的核心机制)
+      </div>
+
+      <div class="spring-spot">
+        <strong>Spring 中的应用：</strong>
+        <br>· 默认作用域 <code>@Scope("singleton")</code> 就是单例
+        <br>· <code>DefaultSingletonBeanRegistry</code> 用 ConcurrentHashMap 存储单例 Bean
+        <br>· 三级缓存解决构造器注入的循环依赖问题
+      </div>
+
+      <pre style="margin:8px 0;"><span class="co">// 源码位置：DefaultSingletonBeanRegistry</span>
+<span class="kw">public</span> <span class="kw">class</span> <span class="tp">DefaultSingletonBeanRegistry</span> {
+    <span class="co">// 一级缓存：存放完全初始化好的单例Bean</span>
+    <span class="kw">private</span> <span class="kw">final</span> Map&lt;String, Object&gt; singletonObjects = <span class="kw">new</span> ConcurrentHashMap&lt;&gt;(<span class="nu">256</span>);
+
+    <span class="kw">protected</span> Object <span class="fn">getSingleton</span>(String beanName) {
+        Object singletonObject = <span class="kw">this</span>.singletonObjects.<span class="fn">get</span>(beanName);
+        <span class="kw">if</span> (singletonObject == <span class="kw">null</span>) {
+            <span class="co">// 从三级缓存查找</span>
+        }
+        <span class="kw">return</span> singletonObject;
+    }
+}</pre>
+    </div>
+  </div>
+
+  <!-- ==================== 二、工厂模式 ==================== -->
+  <div class="pattern-card">
+    <div class="pc-header">
+      <div class="pc-icon green">2</div>
+      <h3>工厂模式 (Factory)</h3>
+      <span class="pc-badge create">创建型</span>
+    </div>
+    <div class="pc-body">
+      <p><strong>定义：</strong>不通过 new 创建对象，而是通过工厂方法来创建，将对象的创建和使用解耦。</p>
+
+      <div class="spring-spot">
+        <strong>Spring 中的应用（两种工厂模式并存）：</strong>
+        <br>· <strong>简单工厂 + 工厂方法：</strong><code>BeanFactory</code> 和 <code>ApplicationContext</code> 是最典型的工厂
+        <br>· <strong>FactoryBean 接口：</strong>当 Bean 的创建逻辑比较复杂时（如 MyBatis 的 Mapper 代理对象），实现这个接口
+      </div>
+
+      <pre style="margin:8px 0;"><span class="co">// ① BeanFactory —— Spring 中最核心的工厂</span>
+<span class="kw">public</span> <span class="kw">interface</span> <span class="tp">BeanFactory</span> {
+    Object <span class="fn">getBean</span>(String name);
+    &lt;T&gt; T <span class="fn">getBean</span>(Class&lt;T&gt; requiredType);
+}
+
+<span class="co">// 调用方：</span>
+UserService service = context.<span class="fn">getBean</span>(UserService.class);
+<span class="co">// 不需要知道 UserService 的实现类、构造参数、依赖关系 → 解耦</span>
+
+<span class="co">// ② FactoryBean —— 用来创建复杂对象</span>
+<span class="kw">public</span> <span class="kw">interface</span> <span class="tp">FactoryBean</span>&lt;T&gt; {
+    T <span class="fn">getObject</span>();           <span class="co">// 返回实际的对象</span>
+    Class&lt;?&gt; <span class="fn">getObjectType</span>(); <span class="co">// 返回对象的类型</span>
+    <span class="kw">default</span> <span class="tp">boolean</span> <span class="fn">isSingleton</span>() { <span class="kw">return</span> <span class="kw">true</span>; }
+}
+
+<span class="co">// 示例：MyBatis 的 MapperFactoryBean</span>
+<span class="kw">public</span> <span class="kw">class</span> <span class="tp">MapperFactoryBean</span>&lt;T&gt; <span class="kw">implements</span> <span class="tp">FactoryBean</span>&lt;T&gt; {
+    <span class="kw">public</span> T <span class="fn">getObject</span>() {
+        <span class="kw">return</span> sqlSession.<span class="fn">getMapper</span>(mapperInterface); <span class="co">// 动态代理生成 Mapper</span>
+    }
+}
+
+<span class="co">// 注意：getBean("mapperFactoryBean") → 返回的是 getObject() 的结果（Mapper 代理）</span>
+<span class="co">//       getBean("&mapperFactoryBean") → 返回 FactoryBean 本身</span></pre>
+    </div>
+  </div>
+
+  <!-- ==================== 三、代理模式 ==================== -->
+  <div class="pattern-card">
+    <div class="pc-header">
+      <div class="pc-icon purple">3</div>
+      <h3>代理模式 (Proxy)</h3>
+      <span class="pc-badge struct">结构型</span>
+    </div>
+    <div class="pc-body">
+      <p><strong>定义：</strong>为其他对象提供一种代理，以控制对原对象的访问。<strong>AOP 的本质就是代理模式。</strong></p>
+
+      <h4>JDK 动态代理 vs CGLIB 代理</h4>
+      <div class="compare-grid" style="margin:10px 0;">
+        <div class="compare-card">
+          <h4>JDK 动态代理</h4>
+          <p>基于<strong>接口</strong>。目标类必须实现接口。通过 <code>Proxy.newProxyInstance()</code> 和 <code>InvocationHandler</code> 创建代理。</p>
+          <p style="font-size:12px;color:var(--text-dim);">Spring 默认策略：有接口 → JDK 代理</p>
+        </div>
+        <div class="compare-card">
+          <h4>CGLIB 代理</h4>
+          <p>基于<strong>继承</strong>。通过继承目标类并重写方法来创建代理。不能代理 final 类和方法。</p>
+          <p style="font-size:12px;color:var(--text-dim);">Spring 默认策略：无接口 → CGLIB</p>
+        </div>
+      </div>
+
+      <div class="diagram label" style="margin:10px 0;">
+<strong>AOP 代理调用链：</strong>
+
+  调用者
+    │
+    ▼
+  ┌──────────┐
+  │ 代理对象  │  (JDK 动态代理 / CGLIB 代理)
+  │ (Proxy)  │
+  └────┬─────┘
+       │
+       ▼
+  ┌──────────────────┐
+  │ @Before 通知       │
+  │ @Around 通知       │  ← 多个 Advisor 组成责任链
+  │ @AfterReturning   │
+  │ @AfterThrowing    │
+  │ @After 通知        │
+  └────────┬─────────┘
+           ▼
+  ┌──────────────────┐
+  │  目标对象         │  (被代理的真实 Bean)
+  │  (Target)        │
+  └──────────────────┘
+      </div>
+
+      <pre style="margin:8px 0;"><span class="co">// Spring 选择代理方式的源码（DefaultAopProxyFactory）：</span>
+<span class="kw">public</span> AopProxy <span class="fn">createAopProxy</span>(AdvisedSupport config) {
+    <span class="kw">if</span> (config.isOptimize() || config.isProxyTargetClass()
+        || <span class="fn">hasNoUserSuppliedProxyInterfaces</span>(config)) {
+        <span class="kw">return</span> <span class="kw">new</span> ObjenesisCglibAopProxy(config);  <span class="co">// → CGLIB</span>
+    }
+    <span class="kw">return</span> <span class="kw">new</span> JdkDynamicAopProxy(config);       <span class="co">// → JDK 动态代理</span>
+}
+
+<span class="co">// Spring Boot 2.x 默认使用 CGLIB（proxy-target-class: true）</span></pre>
+
+      <div class="callout warn">
+        <strong>AOP 失效的两个经典场景：</strong><br>
+        1. <strong>同类方法调用：</strong><code>this.methodB()</code> — this 是原始对象，不是代理，不走 AOP<br>
+        2. <strong>private 方法：</strong>代理类无法重写 private 方法，AOP 失效
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 四、模板方法 ==================== -->
+  <div class="pattern-card">
+    <div class="pc-header">
+      <div class="pc-icon orange">4</div>
+      <h3>模板方法模式 (Template Method)</h3>
+      <span class="pc-badge behave">行为型</span>
+    </div>
+    <div class="pc-body">
+      <p><strong>定义：</strong>在父类中定义算法的骨架（固定步骤），将某些步骤延迟到子类实现。Spring 中大量使用这种模式来"封装样板代码"。</p>
+
+      <div class="spring-spot">
+        <strong>Spring 中的应用（无处不在）：</strong>
+        <br>· <code>JdbcTemplate</code> —— 获取连接/执行/释放连接交给模板，SQL + 结果映射交给你
+        <br>· <code>RestTemplate</code> —— HTTP 请求的创建/发送/响应处理，模板搞定
+        <br>· <code>RedisTemplate / KafkaTemplate</code> —— 同样的思路
+        <br>· <code>AbstractApplicationContext.refresh()</code> —— 容器刷新的 12 步骨架
+      </div>
+
+      <pre style="margin:8px 0;"><span class="co">// JdbcTemplate 的核心 —— query() 方法的简化版：</span>
+<span class="kw">public</span> &lt;T&gt; T <span class="fn">query</span>(String sql, RowMapper&lt;T&gt; rowMapper) {
+    <span class="co">// ① 获取连接（模板替你做了）</span>
+    Connection conn = dataSource.<span class="fn">getConnection</span>();
+    <span class="kw">try</span> {
+        <span class="co">// ② 创建 Statement（模板替你做了）</span>
+        PreparedStatement ps = conn.<span class="fn">prepareStatement</span>(sql);
+        <span class="co">// ③ 执行查询（模板替你做了）</span>
+        ResultSet rs = ps.<span class="fn">executeQuery</span>();
+        <span class="co">// ④ 行映射 —— 只有这一步交给你来实现！</span>
+        <span class="kw">return</span> rowMapper.<span class="fn">mapRow</span>(rs, <span class="nu">0</span>);
+    } <span class="kw">finally</span> {
+        <span class="co">// ⑤ 释放资源（模板替你做了）</span>
+        conn.<span class="fn">close</span>();
+    }
+}
+
+<span class="co">// 你的代码只需关注"怎么把一行数据变成对象"：</span>
+jdbcTemplate.<span class="fn">query</span>(<span class="st">"SELECT * FROM users"</span>, (rs, rowNum) ->
+    <span class="kw">new</span> User(rs.<span class="fn">getLong</span>(<span class="st">"id"</span>), rs.<span class="fn">getString</span>(<span class="st">"name"</span>))
+);</pre>
+
+      <div class="callout tip">
+        <strong>模板方法的核心思想：</strong>把<strong>不变的流程</strong>（获取连接、执行、释放）和<strong>变化的逻辑</strong>（SQL、结果映射）分离。你只写变化的，框架帮你处理不变的。
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 五、观察者模式 ==================== -->
+  <div class="pattern-card">
+    <div class="pc-header">
+      <div class="pc-icon cyan">5</div>
+      <h3>观察者模式 (Observer)</h3>
+      <span class="pc-badge behave">行为型</span>
+    </div>
+    <div class="pc-body">
+      <p><strong>定义：</strong>一对多依赖关系。当主题（Subject）状态改变时，所有依赖的观察者自动收到通知。<strong>这是事件驱动架构的基础。</strong></p>
+
+      <div class="diagram label" style="margin:10px 0;">
+<strong>Spring 事件机制：</strong>
+
+  ① 发布事件                  ② 广播到所有匹配的 Listener
+  ┌──────────┐       ┌──────────────────────────────┐
+  │ Publisher│──────→│ ApplicationEventMulticaster   │
+  │ (Service)│       │  (事件广播器)                  │
+  └──────────┘       │  遍历所有 Listener             │
+                     │  调用 onApplicationEvent()     │
+                     └─────┬──────┬──────┬───────────┘
+                        ┌───┘      │      └───┐
+                        ▼          ▼          ▼
+                    ┌──────┐  ┌──────┐  ┌──────┐
+                    │订单   │  │短信   │  │积分   │
+                    │监听器 │  │监听器 │  │监听器 │
+                    └──────┘  └──────┘  └──────┘
+  </div>
+
+      <pre style="margin:8px 0;"><span class="co">// ① 定义事件</span>
+<span class="kw">public</span> <span class="kw">class</span> <span class="tp">OrderCreatedEvent</span> <span class="kw">extends</span> <span class="tp">ApplicationEvent</span> {
+    <span class="kw">private</span> <span class="kw">final</span> Order order;
+    <span class="kw">public</span> <span class="tp">OrderCreatedEvent</span>(Object source, Order order) {
+        <span class="kw">super</span>(source); <span class="kw">this</span>.order = order;
+    }
+}
+
+<span class="co">// ② 发布事件 —— 通过 ApplicationEventPublisher</span>
+@Service
+<span class="kw">public</span> <span class="kw">class</span> <span class="tp">OrderService</span> {
+    <span class="kw">private</span> <span class="kw">final</span> ApplicationEventPublisher publisher;
+    <span class="kw">public</span> <span class="tp">void</span> <span class="fn">createOrder</span>(Order order) {
+        <span class="co">// ... 保存订单 ...</span>
+        publisher.<span class="fn">publishEvent</span>(<span class="kw">new</span> OrderCreatedEvent(<span class="kw">this</span>, order));
+    }
+}
+
+<span class="co">// ③ 监听事件</span>
+@Component
+<span class="kw">public</span> <span class="kw">class</span> <span class="tp">SmsListener</span> {
+    @EventListener
+    <span class="kw">public</span> <span class="tp">void</span> <span class="fn">handleOrderCreated</span>(OrderCreatedEvent event) {
+        smsService.<span class="fn">send</span>(event.<span class="fn">getOrder</span>().getPhone());
+    }
+}
+
+<span class="co">// ★ 默认是同步的！慢 Listener 会阻塞主流程。异步用 @Async + @EnableAsync</span></pre>
+
+      <div class="callout warn">
+        <strong>坑：</strong>Spring 事件默认是<strong>同步发布</strong>的，所有 Listener 在同一个线程中串行执行。如果某个 Listener 很慢（比如发邮件），会拖慢主流程。解决方案：<code>@EventListener</code> + <code>@Async</code>。
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 六、策略模式 ==================== -->
+  <div class="pattern-card">
+    <div class="pc-header">
+      <div class="pc-icon pink">6</div>
+      <h3>策略模式 (Strategy)</h3>
+      <span class="pc-badge behave">行为型</span>
+    </div>
+    <div class="pc-body">
+      <p><strong>定义：</strong>定义一系列算法，把它们封装起来，让它们可以互相替换。策略模式让算法的变化独立于使用算法的客户端。</p>
+
+      <div class="spring-spot">
+        <strong>Spring 中的应用：</strong>
+        <br>· <code>ResourceLoader</code> —— 根据不同前缀（classpath:/file:/http:）选择不同的资源加载策略
+        <br>· <code>HandlerMethodArgumentResolver</code> —— 根据 Controller 方法参数注解（@RequestParam/@RequestBody...）选择不同的解析策略
+        <br>· <code>AccessDecisionManager</code> —— Spring Security 中，根据投票策略决定是否放行
+        <br>· <strong>Spring 的"策略注入"</strong> —— 同一接口的多个实现注入到 <code>List</code> 或 <code>Map</code> 中
+      </div>
+
+      <pre style="margin:8px 0;"><span class="co">// ★ Spring 最优雅的策略模式用法：注入 List&lt;接口&gt; 或 Map&lt;String, 接口&gt;</span>
+
+<span class="co">// ① 定义策略接口</span>
+<span class="kw">public</span> <span class="kw">interface</span> <span class="tp">PaymentStrategy</span> {
+    <span class="tp">void</span> <span class="fn">pay</span>(Order order);
+    String <span class="fn">getType</span>();  <span class="co">// 返回 "alipay" / "wechat" / "unionpay"</span>
+}
+
+<span class="co">// ② 实现多个策略</span>
+@Component(<span class="st">"alipay"</span>)
+<span class="kw">public</span> <span class="kw">class</span> <span class="tp">AlipayStrategy</span> <span class="kw">implements</span> <span class="tp">PaymentStrategy</span> {
+    <span class="kw">public</span> <span class="tp">void</span> <span class="fn">pay</span>(Order order) { <span class="co">/* 支付宝支付 */</span> }
+    <span class="kw">public</span> String <span class="fn">getType</span>() { <span class="kw">return</span> <span class="st">"alipay"</span>; }
+}
+
+<span class="co">// ③ 使用时自动注入所有策略 → 无需 if-else！</span>
+@Service
+<span class="kw">public</span> <span class="kw">class</span> <span class="tp">PaymentService</span> {
+    <span class="co">// Spring 会自动把所有 PaymentStrategy 的实现注入到这个 Map 中</span>
+    <span class="co">// key = Bean 名称（"alipay", "wechat"）, value = 策略实例</span>
+    <span class="kw">private</span> <span class="kw">final</span> Map&lt;String, PaymentStrategy&gt; strategyMap;
+
+    <span class="kw">public</span> <span class="tp">PaymentService</span>(Map&lt;String, PaymentStrategy&gt; strategyMap) {
+        <span class="kw">this</span>.strategyMap = strategyMap;
+    }
+
+    <span class="kw">public</span> <span class="tp">void</span> <span class="fn">pay</span>(Order order, String payType) {
+        PaymentStrategy strategy = strategyMap.<span class="fn">get</span>(payType);
+        <span class="kw">if</span> (strategy != <span class="kw">null</span>) strategy.<span class="fn">pay</span>(order);
+    }
+}
+
+<span class="co">// 新增支付方式只需加一个 @Component，不用改任何现有代码！→ 开闭原则</span></pre>
+    </div>
+  </div>
+
+  <!-- ==================== 七、装饰器模式 ==================== -->
+  <div class="pattern-card">
+    <div class="pc-header">
+      <div class="pc-icon blue">7</div>
+      <h3>装饰器模式 (Decorator)</h3>
+      <span class="pc-badge struct">结构型</span>
+    </div>
+    <div class="pc-body">
+      <p><strong>定义：</strong>在不改变原类的情况下，动态地给对象添加额外职责。<strong>比继承更灵活。</strong></p>
+
+      <div class="spring-spot">
+        <strong>Spring 中的应用：</strong>
+        <br>· <code>BeanPostProcessor</code> 的链式处理 —— 多个 BPP 依次"装饰"同一个 Bean
+        <br>· <code>ServerHttpRequestDecorator</code> —— Spring Cloud Gateway 中，装饰请求对象以支持 Body 重复读取
+        <br>· Spring Session 的 <code>SessionRepositoryRequestWrapper</code>
+      </div>
+
+      <pre style="margin:8px 0;"><span class="co">// BeanPostProcessor 就是装饰器模式：</span>
+<span class="co">// 多个 BPP 排成一排，Bean 依次经过每个 BPP，每个 BPP "装饰"一下</span>
+
+<span class="co">// 例：Spring 中的 AutowiredAnnotationBeanPostProcessor</span>
+<span class="kw">public</span> <span class="kw">class</span> <span class="tp">AutowiredAnnotationBeanPostProcessor</span> <span class="kw">implements</span> <span class="tp">BeanPostProcessor</span> {
+    <span class="kw">public</span> Object <span class="fn">postProcessBeforeInitialization</span>(Object bean, String beanName) {
+        <span class="co">// 扫描 @Autowired @Value 注解 → 注入依赖</span>
+        <span class="kw">return</span> bean;  <span class="co">// 可能返回被装饰过的 Bean 或原 Bean</span>
+    }
+}
+
+<span class="co">// Spring Cloud Gateway 中的请求体缓存装饰器：</span>
+<span class="kw">public</span> <span class="kw">class</span> <span class="tp">CachedBodyServerHttpRequest</span>
+    <span class="kw">extends</span> <span class="tp">ServerHttpRequestDecorator</span> {  <span class="co">// 装饰器抽象类</span>
+    <span class="co">// 缓存 RequestBody，让它可以多次读取</span>
+}</pre>
+
+      <div class="callout tip">
+        <strong>装饰器 vs 代理模式的区别：</strong><br>
+        代理模式关注<strong>控制访问</strong>（能不能调），装饰器模式关注<strong>增强功能</strong>（调用前后加什么）。但在实际代码中，两者经常混用。
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 八、责任链模式 ==================== -->
+  <div class="pattern-card">
+    <div class="pc-header">
+      <div class="pc-icon purple">8</div>
+      <h3>责任链模式 (Chain of Responsibility)</h3>
+      <span class="pc-badge behave">行为型</span>
+    </div>
+    <div class="pc-body">
+      <p><strong>定义：</strong>多个处理者形成一条链，请求沿链传递，每个处理者决定"自己处理"还是"交给下一个"。</p>
+
+      <div class="diagram label" style="margin:10px 0;">
+<strong>Spring MVC 请求处理链：</strong>
+
+  请求 → FilterChain → DispatcherServlet
+                         │
+                         ├── HandlerInterceptor.preHandle()
+                         │
+                         ├── HandlerAdapter.handle()
+                         │      └── Controller.method()
+                         │
+                         ├── HandlerInterceptor.postHandle()
+                         │
+                         └── HandlerInterceptor.afterCompletion()
+  </div>
+
+      <div class="spring-spot">
+        <strong>Spring 中的应用：</strong>
+        <br>· <strong>Filter Chain：</strong>Servlet Filter 按顺序组成链，每个 Filter 调用 <code>chain.doFilter()</code> 传给下一个
+        <br>· <strong>HandlerInterceptor：</strong>多个拦截器按注册顺序执行，preHandle 正向、postHandle/afterCompletion 反向
+        <br>· <strong>Spring Security Filter Chain：</strong>十几层的安全过滤器链（认证、授权、CSRF、Session 管理等）
+      </div>
+
+      <pre style="margin:8px 0;"><span class="co">// Spring Security 的过滤器链（简化版）：</span>
+<span class="co">// ChannelProcessingFilter</span>
+<span class="co">//   → SecurityContextPersistenceFilter</span>
+<span class="co">//   → UsernamePasswordAuthenticationFilter  ← 处理登录请求</span>
+<span class="co">//   → BasicAuthenticationFilter</span>
+<span class="co">//   → ExceptionTranslationFilter</span>
+<span class="co">//   → FilterSecurityInterceptor  ← 最后一道：授权检查</span>
+
+<span class="co">// 每个 Filter 可以选择：</span>
+<span class="co">//   ① 自己处理完 → 不往下传（如登录成功后返回 token）</span>
+<span class="co">//   ② 处理一部分 → chain.doFilter() 传给下一个</span>
+<span class="co">//   ③ 不处理 → chain.doFilter() 直接传</span></pre>
+    </div>
+  </div>
+
+  <!-- ==================== 九、适配器模式 ==================== -->
+  <div class="pattern-card">
+    <div class="pc-header">
+      <div class="pc-icon green">9</div>
+      <h3>适配器模式 (Adapter)</h3>
+      <span class="pc-badge struct">结构型</span>
+    </div>
+    <div class="pc-body">
+      <p><strong>定义：</strong>把一个类的接口转换成客户端期望的另一个接口，让原本不兼容的接口可以一起工作。</p>
+
+      <div class="spring-spot">
+        <strong>Spring 中的应用：</strong>
+        <br>· <strong>HandlerAdapter：</strong>DispatcherServlet 用一种统一的方式调用不同类型的 Controller（@RequestMapping、HttpRequestHandler、Servlet 等）
+        <br>· <strong>AdvisorAdapter：</strong>将不同类型的 Advice（MethodBeforeAdvice、AfterReturningAdvice）适配为统一的 MethodInterceptor
+      </div>
+
+      <pre style="margin:8px 0;"><span class="co">// DispatcherServlet 中的核心逻辑：</span>
+<span class="kw">protected</span> HandlerAdapter <span class="fn">getHandlerAdapter</span>(Object handler) {
+    <span class="kw">for</span> (HandlerAdapter adapter : <span class="kw">this</span>.handlerAdapters) {
+        <span class="kw">if</span> (adapter.<span class="fn">supports</span>(handler)) {     <span class="co">// 这个 Adapter 能处理这个 handler 吗？</span>
+            <span class="kw">return</span> adapter;
+        }
+    }
+}
+
+<span class="co">// DispatcherServlet 有多个 HandlerAdapter：</span>
+<span class="co">//   RequestMappingHandlerAdapter  → 处理 @RequestMapping 注解的 Controller</span>
+<span class="co">//   HttpRequestHandlerAdapter     → 处理 HttpRequestHandler 接口的 Controller</span>
+<span class="co">//   SimpleControllerHandlerAdapter→ 处理旧式 Controller 接口</span>
+
+<span class="co">// DispatcherServlet 的调用：</span>
+mv = adapter.<span class="fn">handle</span>(request, response, handler);  <span class="co">// 统一的调用方式！</span></pre>
+
+      <div class="callout">
+        <strong>适配器模式的作用：</strong>让 DispatcherServlet 不必知道 Controller 的具体类型，只通过 <code>adapter.handle()</code> 统一调用。每种 Controller 类型有自己的适配器。新增 Controller 类型只需加一个适配器，不用改 DispatcherServlet。
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 十、建造者模式 ==================== -->
+  <div class="pattern-card">
+    <div class="pc-header">
+      <div class="pc-icon orange">10</div>
+      <h3>建造者模式 (Builder)</h3>
+      <span class="pc-badge create">创建型</span>
+    </div>
+    <div class="pc-body">
+      <p><strong>定义：</strong>将一个复杂对象的构建与其表示分离，使得同样的构建过程可以创建不同的表示。</p>
+
+      <div class="spring-spot">
+        <strong>Spring 中的应用：</strong>
+        <br>· <code>BeanDefinitionBuilder</code> —— 编程式构建 Bean 定义
+        <br>· <code>RequestMappingInfo.Builder</code> —— 构建请求映射信息
+        <br>· Spring Boot 的 <code>SpringApplicationBuilder</code> —— 构建 SpringApplication
+        <br>· <code>MockMvcRequestBuilders</code> —— 测试中构建 Mock 请求
+      </div>
+
+      <pre style="margin:8px 0;"><span class="co">// Spring 中建造者模式的几种体现</span>
+
+<span class="co">// ① BeanDefinitionBuilder</span>
+BeanDefinitionBuilder builder = BeanDefinitionBuilder
+    .<span class="fn">genericBeanDefinition</span>(UserService.class)
+    .<span class="fn">addPropertyValue</span>(<span class="st">"timeout"</span>, <span class="nu">3000</span>)
+    .<span class="fn">setLazyInit</span>(<span class="kw">true</span>)
+    .<span class="fn">setScope</span>(<span class="st">"singleton"</span>);
+BeanDefinition bd = builder.<span class="fn">getBeanDefinition</span>();
+
+<span class="co">// ② SpringApplicationBuilder（Spring Boot）</span>
+<span class="kw">new</span> SpringApplicationBuilder()
+    .<span class="fn">sources</span>(Application.class)
+    .<span class="fn">bannerMode</span>(Banner.Mode.OFF)
+    .<span class="fn">profiles</span>(<span class="st">"dev"</span>)
+    .<span class="fn">run</span>(args);
+
+<span class="co">// ③ MockMvcRequestBuilders</span>
+MockHttpServletRequestBuilder request = MockMvcRequestBuilders
+    .<span class="fn">get</span>(<span class="st">"/api/users/{id}"</span>, <span class="nu">1</span>)
+    .<span class="fn">contentType</span>(MediaType.APPLICATION_JSON)
+    .<span class="fn">header</span>(<span class="st">"Authorization"</span>, <span class="st">"Bearer xxx"</span>);</pre>
+
+      <div class="callout tip">
+        <strong>建造者模式 vs 工厂模式：</strong><br>
+        工厂模式：<strong>一步创建</strong>对象，关注"创建什么"。<br>
+        建造者模式：<strong>分步构建</strong>对象，关注"怎么一步一步搭起来"。参数多、配置复杂时用建造者。
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 总结 ==================== -->
+  <h2>设计模式在 Spring 中的分布总览</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>模式</th><th>类型</th><th>Spring 中的体现</th><th>一句话理解</th></tr></thead>
+      <tbody>
+        <tr><td>单例</td><td>创建型</td><td>Bean 默认 scope，三级缓存</td><td>一个容器一个 Bean</td></tr>
+        <tr><td>工厂</td><td>创建型</td><td>BeanFactory, FactoryBean</td><td>不 new，找工厂要</td></tr>
+        <tr><td>建造者</td><td>创建型</td><td>BeanDefinitionBuilder, MockMvcRequestBuilders</td><td>一步一步搭对象</td></tr>
+        <tr><td>代理</td><td>结构型</td><td>AOP（JDK/CGLIB 动态代理）</td><td>方法前后"搞事情"</td></tr>
+        <tr><td>装饰器</td><td>结构型</td><td>BeanPostProcessor, ServerHttpRequestDecorator</td><td>一层一层包，逐步增强</td></tr>
+        <tr><td>适配器</td><td>结构型</td><td>HandlerAdapter, AdvisorAdapter</td><td>不兼容 → 对个口子</td></tr>
+        <tr><td>模板方法</td><td>行为型</td><td>JdbcTemplate, RestTemplate, refresh()</td><td>骨架固定，细节交给你</td></tr>
+        <tr><td>观察者</td><td>行为型</td><td>ApplicationEvent, @EventListener</td><td>有事了通知你</td></tr>
+        <tr><td>策略</td><td>行为型</td><td>ResourceLoader, Map 注入多实现</td><td>多种算法，自由切换</td></tr>
+        <tr><td>责任链</td><td>行为型</td><td>Filter Chain, Interceptor</td><td>排队处理，一个接一个</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ==================== 面试速记 ==================== -->
+  <h2 id="s11">十一、面试速记</h2>
+  <div class="qa-grid">
+    <div class="qa-card">
+      <div class="q">Spring 中用了哪些设计模式？举 5 个例子。</div>
+      <div class="a">单例：Bean 默认 scope=singleton，三级缓存。工厂：BeanFactory + FactoryBean。代理：AOP（JDK/CGLIB 动态代理）。模板方法：JdbcTemplate、RestTemplate。观察者：ApplicationEvent + @EventListener。策略：Controller 参数解析、ResourceLoader。责任链：Filter Chain、Interceptor。适配器：HandlerAdapter。</div>
+    </div>
+    <div class="qa-card">
+      <div class="q">BeanFactory 和 FactoryBean 有什么区别？</div>
+      <div class="a">BeanFactory 是 Spring 的 IoC 容器顶层接口，负责创建和管理所有 Bean。FactoryBean 是一个特殊的 Bean，它的 getObject() 方法返回的对象才是最终注册到容器中的 Bean。MyBatis 的 Mapper 代理对象就是通过 FactoryBean 创建的。</div>
+    </div>
+    <div class="qa-card">
+      <div class="q">AOP 用的是什么设计模式？JDK 代理和 CGLIB 怎么选？</div>
+      <div class="a">代理模式。目标类有接口 → JDK 动态代理（基于接口）；无接口 → CGLIB（基于继承）。Spring Boot 2.x 默认使用 CGLIB（proxy-target-class: true）。CGLIB 不能代理 final 类和方法。</div>
+    </div>
+    <div class="qa-card">
+      <div class="q">JdbcTemplate 体现了什么设计模式？好处是什么？</div>
+      <div class="a">模板方法模式。把"获取连接→执行→释放资源"这套固定流程封装起来，只把"SQL + 结果映射"通过回调（RowMapper）留给调用者。好处：减少样板代码，避免忘记关闭连接导致资源泄漏。</div>
+    </div>
+    <div class="qa-card">
+      <div class="q">Spring 的事件机制是什么设计模式？默认同步还是异步？</div>
+      <div class="a">观察者模式。默认是同步的（同一线程串行执行所有 Listener），如果某个 Listener 很慢会阻塞主流程。异步需要 @EventListener + @Async + @EnableAsync。</div>
+    </div>
+    <div class="qa-card">
+      <div class="q">Spring 中如何优雅地实现策略模式？</div>
+      <div class="a">定义策略接口 → 多个 @Component 实现 → 通过构造器注入 Map&lt;String, 接口&gt;（Spring 自动注入所有实现，key=beanName, value=实例）。新增策略只需加一个 @Component，符合开闭原则。</div>
+    </div>
+    <div class="qa-card">
+      <div class="q">DispatcherServlet 中用到了什么设计模式？</div>
+      <div class="a">HandlerAdapter 是适配器模式：把不同类型的 Controller（@RequestMapping、HttpRequestHandler、Servlet）适配成统一调用。HandlerMapping 是策略模式：根据请求找到对应的处理器。请求处理链是责任链模式。</div>
+    </div>
+    <div class="qa-card">
+      <div class="q">Spring 的单例 Bean 是线程安全的吗？</div>
+      <div class="a">不是。Spring 只保证单例 Bean 在容器中只有一个实例，但不保证线程安全。如果单例 Bean 有可变状态（如实例字段），多线程并发访问会出现问题。解决方案：无状态设计（推荐）、ThreadLocal、改用 prototype 作用域。</div>
+    </div>
+    <div class="qa-card">
+      <div class="q">BeanPostProcessor 是什么设计模式？</div>
+      <div class="a">装饰器模式。容器中有多个 BeanPostProcessor，Bean 在初始化前后会依次经过每个 BPP 的处理（postProcessBeforeInitialization → init → postProcessAfterInitialization）。每个 BPP 可以"装饰"Bean 或返回原 Bean。</div>
+    </div>
+    <div class="qa-card">
+      <div class="q">Spring 中用到了哪些创建型设计模式？各自在什么场景？</div>
+      <div class="a">单例：默认 Bean 作用域。工厂：BeanFactory / FactoryBean，解耦对象的创建和使用。建造者：BeanDefinitionBuilder、SpringApplicationBuilder，用于构建复杂配置对象。（没有原型模式，因为 Spring 的 prototype scope 只是每次 getBean 时创建新实例，不是通过 clone。）</div>
+    </div>
+  </div>
+
+  <div class="doc-footer">
+    <p><strong>推荐阅读</strong></p>
+    <p>
+      《Spring 源码深度解析》—— 郝佳 · Spring 源码入门<br>
+      《设计模式之禅》—— 秦小波<br>
+      Spring 官方文档 · Core Technologies 章节
+    </p>
+  </div>
+
+</div>
+</body>
+</html>

@@ -54,7 +54,8 @@
 ├── kafka-demo/     :8081       # Kafka 消息队列实操
 ├── es-demo/        :8082       # Elasticsearch 搜索实操
 ├── hbase-demo/     :8083       # HBase 分布式存储实操
-└── qdrant-demo/    :8084       # Qdrant 向量检索实操</pre>
+├── qdrant-demo/    :8084       # Qdrant 向量检索实操
+└── xxl-job-demo/   :8085       # XXL-JOB 执行器接入实操</pre>
 
 <h2>二、启动方式</h2>
 
@@ -105,11 +106,35 @@ com.example.kafka.KafkaDemoApplication
 com.example.es.EsDemoApplication
 com.example.hbase.HBaseDemoApplication
 com.example.qdrant.QdrantDemoApplication
+com.example.xxljob.XxlJobDemoApplication
 
 <span class="co"># 如果 IDEA 点击绿色三角仍然失败，通常是因为工程不是按“整个多模块项目”导入，</span>
 <span class="co"># 而是只导入了某个子模块，导致 common 没进入运行时 classpath。</span></pre>
 
 <h2>三、API 接口速查</h2>
+
+<!-- XXL-JOB -->
+<div class="module-card">
+  <h4>XXL-JOB 模块 (:8085) —— 分布式任务调度执行器</h4>
+  <p style="font-size:13px;color:var(--text-dim);">模拟场景：同一份“日报生成”逻辑，分别支持本地 <code>@Scheduled</code> 和平台化 <code>@XxlJob</code> 触发，用于理解两者差异和接入方式。</p>
+  <div class="endpoint"><span class="method get">GET</span> <code>/api/jobs/status</code></div>
+  <div class="endpoint"><span class="method get">GET</span> <code>/api/jobs/report-preview</code></div>
+  <pre style="margin:6px 0;font-size:12px;"><span class="co"># 启动 XXL-JOB Demo（默认只演示 Executor）</span>
+mvn -pl xxl-job-demo -am spring-boot:run -DskipTests
+
+<span class="co"># 打开本地 @Scheduled 对照任务</span>
+mvn -pl xxl-job-demo -am spring-boot:run -DskipTests \
+  -Dspring-boot.run.profiles=local-scheduled
+
+<span class="co"># 查看 demo 状态</span>
+curl http://localhost:<span class="nu">8085</span>/api/jobs/status
+
+<span class="co"># 预览报表任务执行结果</span>
+curl http://localhost:<span class="nu">8085</span>/api/jobs/report-preview
+
+<span class="co"># 默认配置会连接本地 XXL-JOB Admin</span>
+<span class="co"># http://localhost:8080/xxl-job-admin</span></pre>
+</div>
 
 <!-- Kafka -->
 <div class="module-card">

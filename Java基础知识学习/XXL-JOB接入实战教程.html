@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XXL-JOB 接入实战教程 · Spring Boot 从 0 到 1</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&display=swap');
+
+  *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+  :root{
+    --bg:#f7f3ec;--paper:#fffdf9;--surface:#fff8ef;--border:#ddcfb8;--text:#3f3529;--dim:#7d715f;
+    --title:#201913;--primary:#0f766e;--primary-deep:#115e59;--blue:#1d4ed8;--red:#b91c1c;--gold:#a16207;
+  }
+  body{
+    font-family:'Noto Sans SC',sans-serif;
+    background:radial-gradient(circle at top left,rgba(15,118,110,.09),transparent 26%),linear-gradient(180deg,#faf7f1,#f7f3ec);
+    color:var(--text);line-height:1.88
+  }
+  .container{max-width:1050px;margin:0 auto;padding:34px 22px 78px}
+  .hero{
+    background:linear-gradient(135deg,rgba(255,253,249,.97),rgba(240,248,246,.92));
+    border:1px solid var(--border);border-radius:24px;padding:52px 42px 40px;position:relative;overflow:hidden;
+    box-shadow:0 18px 40px rgba(63,53,41,.07)
+  }
+  .hero::after{
+    content:'';position:absolute;right:-70px;top:-90px;width:240px;height:240px;border-radius:50%;
+    background:radial-gradient(circle,rgba(15,118,110,.14),transparent 70%)
+  }
+  .eyebrow{
+    display:inline-block;padding:6px 12px;border:1px solid rgba(15,118,110,.18);border-radius:999px;
+    color:var(--primary-deep);font-size:12px;letter-spacing:.08em;background:rgba(255,255,255,.55);margin-bottom:18px
+  }
+  h1{
+    font-family:'Cormorant Garamond','Noto Sans SC',serif;font-size:46px;line-height:1.05;color:var(--title);margin-bottom:12px
+  }
+  .subtitle{max-width:820px;font-size:16px;color:var(--dim);margin-bottom:20px}
+  .hero-grid,.compare-grid,.path-grid,.qa-grid{display:grid;gap:16px}
+  .hero-grid{grid-template-columns:1.15fr .85fr}
+  .compare-grid{grid-template-columns:1fr 1fr}
+  .path-grid,.qa-grid{grid-template-columns:1fr 1fr}
+  .card,.callout,.step,.toc,.qa-card{
+    background:var(--paper);border:1px solid var(--border);border-radius:18px
+  }
+  .card,.qa-card{padding:22px}
+  .toc{margin-top:26px;padding:22px 26px}
+  .toc h3,.card h3,.qa-card .q{color:var(--title)}
+  .toc ol{columns:2;column-gap:34px;padding-left:20px;font-size:14px}
+  .toc li{margin-bottom:8px}
+  .toc a{color:var(--primary);text-decoration:none}
+  .toc a:hover{text-decoration:underline}
+  section{margin-top:34px}
+  h2{
+    font-family:'Cormorant Garamond','Noto Sans SC',serif;font-size:34px;color:var(--title);margin-bottom:14px
+  }
+  h3{font-size:19px;margin-bottom:10px}
+  h4{font-size:16px;margin-bottom:8px;color:var(--title)}
+  p{margin-bottom:13px;font-size:15px}
+  strong{color:var(--title)}
+  code{
+    font-family:'JetBrains Mono',monospace;background:#e8f3f1;color:var(--primary-deep);padding:2px 6px;border-radius:5px;font-size:13px
+  }
+  pre{
+    background:#1d1a17;color:#ede7da;padding:18px 20px;border-radius:14px;overflow-x:auto;
+    font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.72;margin:14px 0;border:1px solid #3b342c
+  }
+  .callout{padding:15px 18px;margin:14px 0;background:linear-gradient(135deg,rgba(255,255,255,.78),rgba(240,248,246,.82))}
+  .callout.tip{border-left:4px solid var(--primary)}
+  .callout.warn{border-left:4px solid var(--red)}
+  .callout.alt{border-left:4px solid var(--blue)}
+  .table-wrap{overflow-x:auto;margin:14px 0 20px}
+  table{width:100%;min-width:760px;border-collapse:collapse;background:var(--paper);font-size:14px}
+  th,td{border:1px solid var(--border);padding:11px 13px;text-align:left;vertical-align:top}
+  th{background:#edf5f4;color:var(--title)}
+  tbody tr:nth-child(even){background:rgba(247,243,236,.72)}
+  td:first-child{font-weight:700;white-space:nowrap}
+  .step-list{display:grid;gap:10px;margin:16px 0}
+  .step{
+    padding:14px 16px;display:grid;grid-template-columns:38px 1fr;gap:14px;align-items:start
+  }
+  .idx{
+    width:38px;height:38px;border-radius:50%;background:linear-gradient(180deg,var(--primary),var(--primary-deep));
+    color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700
+  }
+  .compare-card{
+    background:var(--paper);border:1px solid var(--border);border-radius:18px;padding:20px;border-top:4px solid var(--primary)
+  }
+  .compare-card.alt{border-top-color:var(--blue)}
+  .compare-card.warn{border-top-color:var(--gold)}
+  .compare-card.bad{border-top-color:var(--red)}
+  .compare-card ul,.card ul{padding-left:18px}
+  .compare-card li,.card li{margin-bottom:6px}
+  .diagram{
+    white-space:pre-wrap;background:#1d1a17;color:#f3eee4;border-radius:14px;padding:18px 20px;
+    font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.8;margin:14px 0
+  }
+  .qa-card .q{font-size:15px;font-weight:700;margin-bottom:8px}
+  .qa-card .a{font-size:14px;color:var(--dim)}
+  .footer{margin-top:40px;padding-top:22px;border-top:1px solid var(--border);font-size:13px;color:var(--dim)}
+  .footer a{color:var(--primary);text-decoration:none}
+  .footer a:hover{text-decoration:underline}
+  @media (max-width:900px){
+    .hero-grid,.compare-grid,.path-grid,.qa-grid{grid-template-columns:1fr}
+    .toc ol{columns:1}
+  }
+  @media (max-width:768px){
+    .container{padding:18px 14px 60px}.hero{padding:34px 22px 28px}h1{font-size:34px}h2{font-size:28px}
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header class="hero">
+    <div class="eyebrow">SPRING BOOT 实战教程</div>
+    <h1>XXL-JOB 接入实战教程</h1>
+    <p class="subtitle">这一篇不再讨论“为什么要用”，而是直接回答“怎么接进去”。目标是让你能把一个原本写在 <code>@Scheduled</code> 里的定时任务，迁移为可在控制台统一管理的 <code>XXL-JOB Executor</code> 任务。</p>
+    <div class="hero-grid">
+      <div class="card">
+        <h3>学习目标</h3>
+        <ul>
+          <li>理解 Admin 与 Executor 的真实接入关系。</li>
+          <li>会配置 Spring Boot 执行器。</li>
+          <li>会编写一个 <code>@XxlJob</code> 任务。</li>
+          <li>知道如何从本地 <code>@Scheduled</code> 迁移。</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>配套工程</h3>
+        <p>本目录下已经新增了一个可参考的实操模块：</p>
+        <p><strong><code>middleware-practice/xxl-job-demo</code></strong></p>
+        <p>你可以先看本文，再去跑 demo；也可以边看边对照代码。</p>
+      </div>
+    </div>
+    <nav class="toc">
+      <h3>目录</h3>
+      <ol>
+        <li><a href="#s1">准备什么环境</a></li>
+        <li><a href="#s2">整体接入思路</a></li>
+        <li><a href="#s3">Spring Boot 端配置</a></li>
+        <li><a href="#s4">编写 `@XxlJob` 任务</a></li>
+        <li><a href="#s5">控制台如何配置任务</a></li>
+        <li><a href="#s6">从 `@Scheduled` 迁移</a></li>
+        <li><a href="#s7">常见问题与排查</a></li>
+        <li><a href="#s8">配套 demo 说明</a></li>
+      </ol>
+    </nav>
+  </header>
+
+  <section id="s1">
+    <h2>一、准备什么环境</h2>
+    <div class="card">
+      <p>要跑起来一个最小可用的 `XXL-JOB`，你至少需要两部分：</p>
+      <div class="compare-grid">
+        <div class="compare-card">
+          <h4>调度中心 Admin</h4>
+          <ul>
+            <li>带 Web 控制台。</li>
+            <li>保存任务配置、执行记录、调度状态。</li>
+            <li>通常需要数据库持久化。</li>
+          </ul>
+        </div>
+        <div class="compare-card alt">
+          <h4>业务执行器 Executor</h4>
+          <ul>
+            <li>就是你的 Spring Boot 服务。</li>
+            <li>它向 Admin 注册自己。</li>
+            <li>真正执行业务方法的是它。</li>
+          </ul>
+        </div>
+      </div>
+      <div class="callout tip">
+        只有 Executor 没有 Admin，不算完整接入；只有 Admin 没有 Executor，也没有业务任务可以执行。
+      </div>
+    </div>
+  </section>
+
+  <section id="s2">
+    <h2>二、整体接入思路</h2>
+    <div class="card">
+      <div class="diagram">1. 部署 Admin
+2. Spring Boot 引入 xxl-job-core
+3. 配置 XxlJobSpringExecutor
+4. 编写 <span style="color:#93c5fd">@XxlJob</span> 方法
+5. 启动服务并注册到 Admin
+6. 在控制台新建任务并绑定执行器
+7. 手动触发 / 定时触发验证执行结果</div>
+      <div class="step-list">
+        <div class="step"><div class="idx">1</div><div>先让 Admin 可访问。没有控制台，后面所有配置都没法做。</div></div>
+        <div class="step"><div class="idx">2</div><div>在 Spring Boot 工程里引入 `xxl-job-core`，注册执行器 Bean。</div></div>
+        <div class="step"><div class="idx">3</div><div>编写 `@XxlJob("handlerName")` 方法，方法名不重要，`handlerName` 才是控制台绑定的关键。</div></div>
+        <div class="step"><div class="idx">4</div><div>到 Admin 控制台里新建“执行器”和“任务”，把任务路由到你的服务。</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="s3">
+    <h2>三、Spring Boot 端配置</h2>
+    <div class="card">
+      <h3>3.1 Maven 依赖</h3>
+      <pre>&lt;dependency&gt;
+    &lt;groupId&gt;com.xuxueli&lt;/groupId&gt;
+    &lt;artifactId&gt;xxl-job-core&lt;/artifactId&gt;
+    &lt;version&gt;2.4.1&lt;/version&gt;
+&lt;/dependency&gt;</pre>
+
+      <h3>3.2 `application.yml` 核心配置</h3>
+      <pre>server:
+  port: 8085
+
+xxl:
+  job:
+    admin:
+      addresses: http://localhost:8080/xxl-job-admin
+    accessToken: default_token
+    executor:
+      appname: xxl-job-demo-executor
+      port: 9999
+      logpath: ./logs/xxl-job
+      logretentiondays: 15</pre>
+
+      <h3>3.3 注册执行器 Bean</h3>
+      <pre>@Bean
+public XxlJobSpringExecutor xxlJobExecutor() {
+    XxlJobSpringExecutor executor = new XxlJobSpringExecutor();
+    executor.setAdminAddresses(adminAddresses);
+    executor.setAccessToken(accessToken);
+    executor.setAppname(appname);
+    executor.setPort(port);
+    executor.setLogPath(logPath);
+    executor.setLogRetentionDays(logRetentionDays);
+    return executor;
+}</pre>
+
+      <div class="callout alt">
+        <strong>理解这个 Bean 的作用：</strong>它就是告诉你的应用“你现在不仅是普通 Spring Boot 服务，还是 XXL-JOB 的一个执行器节点，要主动向调度中心报到并接收调度命令”。
+      </div>
+    </div>
+  </section>
+
+  <section id="s4">
+    <h2>四、编写 `@XxlJob` 任务</h2>
+    <div class="card">
+      <pre>@Component
+public class XxlJobHandlers {
+
+    @XxlJob("dailyReportJob")
+    public void dailyReportJob() {
+        String param = XxlJobHelper.getJobParam();
+        XxlJobHelper.log("start dailyReportJob, param={0}", param);
+
+        // 执行业务逻辑
+
+        XxlJobHelper.log("dailyReportJob finished");
+    }
+}</pre>
+
+      <p>这里最关键的是 <code>@XxlJob("dailyReportJob")</code> 里的字符串。控制台里配置任务时，<strong>JobHandler</strong> 要填的就是它。</p>
+
+      <h3>4.1 分片任务示例</h3>
+      <pre>@XxlJob("shardingDemoJob")
+public void shardingDemoJob() {
+    int shardIndex = XxlJobHelper.getShardIndex();
+    int shardTotal = XxlJobHelper.getShardTotal();
+    XxlJobHelper.log("processing shard {0}/{1}", shardIndex, shardTotal);
+}</pre>
+
+      <div class="callout tip">
+        分片任务非常适合大批量扫描、批量补偿、分区处理这类作业。核心思想是：同一个任务被拆成多个分片，多个执行器各自处理一部分数据。
+      </div>
+    </div>
+  </section>
+
+  <section id="s5">
+    <h2>五、控制台如何配置任务</h2>
+    <div class="card">
+      <p>服务启动后，真正把任务跑起来，还需要去 Admin 控制台做配置。</p>
+      <div class="step-list">
+        <div class="step"><div class="idx">1</div><div>先创建执行器，`AppName` 要与 Spring Boot 配置中的 `xxl.job.executor.appname` 一致。</div></div>
+        <div class="step"><div class="idx">2</div><div>新建任务，选择刚才的执行器。</div></div>
+        <div class="step"><div class="idx">3</div><div>`JobHandler` 填 `dailyReportJob` 或 `shardingDemoJob`。</div></div>
+        <div class="step"><div class="idx">4</div><div>设置 cron 表达式、路由策略、阻塞策略、失败重试次数。</div></div>
+        <div class="step"><div class="idx">5</div><div>先手动执行一次，确认日志正常，再开启定时调度。</div></div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>配置项</th>
+              <th>含义</th>
+              <th>实战建议</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>执行器</td>
+              <td>任务要调度到哪个服务</td>
+              <td>按业务域划分，不要把所有任务混成一个大执行器</td>
+            </tr>
+            <tr>
+              <td>JobHandler</td>
+              <td>执行器里具体调用哪个方法</td>
+              <td>和 `@XxlJob("...")` 保持一致</td>
+            </tr>
+            <tr>
+              <td>Cron</td>
+              <td>调度时间规则</td>
+              <td>先用低频 cron 测试，避免错误任务高频触发</td>
+            </tr>
+            <tr>
+              <td>路由策略</td>
+              <td>任务分发到哪个节点</td>
+              <td>普通任务先用“第一个”或“轮询”，特殊任务再按机器隔离</td>
+            </tr>
+            <tr>
+              <td>阻塞策略</td>
+              <td>上次未结束时新任务怎么处理</td>
+              <td>核心任务要认真评估串行还是丢弃</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="s6">
+    <h2>六、从 `@Scheduled` 迁移</h2>
+    <div class="card">
+      <p>迁移时，最好的做法不是把业务逻辑重写一遍，而是把“触发方式”和“业务逻辑”拆开。</p>
+      <pre>@Service
+public class ReportService {
+    public Map&lt;String, Object&gt; generateDailyReport(String triggerType) {
+        ...
+    }
+}</pre>
+      <p>然后：</p>
+      <div class="compare-grid">
+        <div class="compare-card warn">
+          <h4>旧方式</h4>
+          <pre>@Scheduled(cron = "...")
+public void localReportJob() {
+    reportService.generateDailyReport("@Scheduled");
+}</pre>
+        </div>
+        <div class="compare-card">
+          <h4>新方式</h4>
+          <pre>@XxlJob("dailyReportJob")
+public void dailyReportJob() {
+    reportService.generateDailyReport("XXL-JOB");
+}</pre>
+        </div>
+      </div>
+
+      <div class="callout tip">
+        <strong>迁移原则：</strong>把真正的业务逻辑沉到 Service，调度层只负责触发。这样你可以同时保留对照实验，也便于后续从一种调度方案切到另一种。
+      </div>
+    </div>
+  </section>
+
+  <section id="s7">
+    <h2>七、常见问题与排查</h2>
+    <div class="card">
+      <div class="qa-grid">
+        <div class="qa-card">
+          <div class="q">为什么控制台里看不到执行器？</div>
+          <div class="a">先检查 Admin 地址是否正确、服务是否启动、执行器 `appname` 是否和控制台一致、端口是否可访问。</div>
+        </div>
+        <div class="qa-card">
+          <div class="q">为什么任务触发了但业务没执行？</div>
+          <div class="a">通常先查 `JobHandler` 名字是否匹配，再看执行日志里是否有异常堆栈。</div>
+        </div>
+        <div class="qa-card">
+          <div class="q">为什么迁移后还是出现重复处理？</div>
+          <div class="a">因为调度统一不等于业务天然幂等。核心写操作仍要做去重和幂等控制。</div>
+        </div>
+        <div class="qa-card">
+          <div class="q">是不是接了 XXL-JOB 就不需要 `@Scheduled` 了？</div>
+          <div class="a">不是。轻量、实例内、非核心任务仍然可以保留 `@Scheduled`。关键在于按场景分层，而不是“一刀切”。</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="s8">
+    <h2>八、配套 demo 说明</h2>
+    <div class="card">
+      <p>本地已新增模块 <code>middleware-practice/xxl-job-demo</code>，其中包含：</p>
+      <ul>
+        <li><code>XxlJobConfig</code>：执行器配置。</li>
+        <li><code>XxlJobHandlers</code>：`dailyReportJob` 与 `shardingDemoJob`。</li>
+        <li><code>LocalScheduledJobs</code>：一个可对照的本地定时任务。</li>
+        <li><code>JobDemoController</code>：用来查看 demo 状态。</li>
+      </ul>
+      <pre># 只启动 XXL-JOB Executor
+mvn -pl xxl-job-demo spring-boot:run
+
+# 同时打开本地 @Scheduled 对照任务
+mvn -pl xxl-job-demo spring-boot:run -Dspring-boot.run.profiles=local-scheduled</pre>
+      <div class="callout alt">
+        如果你下一步想做完整本地联调，建议再准备一个可访问的 `XXL-JOB Admin` 和初始化 SQL。这样就可以在控制台里真正创建任务并触发 `dailyReportJob`。
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    参考资料：<a href="https://github.com/xuxueli/xxl-job" target="_blank" rel="noopener noreferrer">XXL-JOB 官方项目</a>、
+    <a href="https://docs.spring.io/spring-framework/reference/integration/scheduling.html" target="_blank" rel="noopener noreferrer">Spring Scheduling 官方文档</a>。<br>
+    建议搭配阅读同目录的 <strong>XXL-JOB详解与调度方案对比.html</strong>。
+  </footer>
+</div>
+</body>
+</html>

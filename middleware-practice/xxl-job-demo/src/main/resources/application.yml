@@ -1,0 +1,30 @@
+server:
+  port: 8085
+
+spring:
+  application:
+    name: xxl-job-demo
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+xxl:
+  job:
+    admin:
+      addresses: http://localhost:8080/xxl-job-admin
+    accessToken: default_token
+    executor:
+      appname: xxl-job-demo-executor
+      address:
+      ip:
+      port: 9999
+      logpath: ./logs/xxl-job
+      logretentiondays: 15
+
+demo:
+  local-scheduled:
+    enabled: false
+    cron: 0 */2 * * * ?
